@@ -3,8 +3,8 @@ import { InterviewProvider } from './providers/InterviewProvider'
 import router from './router'
 import '../styles/globals.css'
 import '../styles/mic.css'
-import Timer from '../component/Timer'
-import MicButton from '../component/MicButton.tsx'  // 👈 add this
+import Timer from '../components/shared/Timer.tsx'
+import MicButton from '../components/shared/MicButton.tsx'  // 👈 add this
 
 export default function App() {
   return (

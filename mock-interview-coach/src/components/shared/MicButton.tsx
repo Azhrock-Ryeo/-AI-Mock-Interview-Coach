@@ -1,4 +1,4 @@
-import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
 
 export default function MicButton() {
   const { isListening, isSupported, startListening, stopListening, transcript, error } =
