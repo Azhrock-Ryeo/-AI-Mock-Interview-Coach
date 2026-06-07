@@ -26,36 +26,36 @@ export default function ProgressBar({
  
   return (
     <>
-      <style>{`
+    <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
  
         .pb-wrapper {
-          font-family: 'DM Sans', sans-serif;
-          width: 100%;
-          max-width: 680px;
+        font-family: 'DM Sans', sans-serif;
+        width: 100%;
+        max-width: 680px;
         }
- 
+
         .pb-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 10px;
         }
  
         .pb-label {
-          font-size: 12px;
-          font-weight: 600;
-          letter-spacing: 0.07em;
-          text-transform: uppercase;
-          color: #6b7280;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #6b7280;
         }
- 
+
         .pb-counter {
-          display: flex;
-          align-items: baseline;
-          gap: 2px;
+        display: flex;
+        align-items: baseline;
+        gap: 2px;
         }
- 
+
         .pb-current {
           font-size: 22px;
           font-weight: 700;
