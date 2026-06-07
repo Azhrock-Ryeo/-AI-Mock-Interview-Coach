@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.mic-btn {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 30%, #6ee0c8, #1D9E75 50%, #085041);
+  box-shadow:
+    0 8px 32px rgba(29,158,117,0.5),
+    inset 0 3px 8px rgba(255,255,255,0.35),
+    inset 0 -5px 12px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mic-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow:
+    0 16px 40px rgba(29,158,117,0.6),
+    inset 0 3px 8px rgba(255,255,255,0.35),
+    inset 0 -5px 12px rgba(0,0,0,0.3);
+}
+
+.mic-btn:active {
+  transform: scale(0.96);
+}
+
+.mic-btn.listening {
+  background: radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #7f1d1d);
+  box-shadow:
+    0 8px 32px rgba(239,68,68,0.55),
+    inset 0 3px 8px rgba(255,255,255,0.35),
+    inset 0 -5px 12px rgba(0,0,0,0.3);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+.mic-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mic-shine {
+  position: absolute;
+  top: 12px;
+  left: 20px;
+  width: 32px;
+  height: 16px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 50%;
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.mic-ring {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: rgba(239,68,68,0.3);
+  animation: ripple 1.5s ease-out infinite;
+  pointer-events: none;
+}
+
+.mic-ring-2 { animation-delay: 0.5s; }
+.mic-ring-3 { animation-delay: 1s; }
