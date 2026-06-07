@@ -1,59 +1,59 @@
 import { useEffect, useState } from "react";
- 
+
 interface ProgressBarProps {
   current: number;   // e.g. 3
   total: number;     // e.g. 10
   label?: string;    // optional override label, default: "Question"
 }
- 
+
 export default function ProgressBar({
   current,
   total,
   label = "Question",
 }: ProgressBarProps) {
   const [displayedWidth, setDisplayedWidth] = useState(0);
- 
+
   const clamped = Math.min(Math.max(current, 0), total);
   const percent = total > 0 ? (clamped / total) * 100 : 0;
   const isComplete = clamped === total;
- 
+
   // Animate fill whenever percent changes
   useEffect(() => {
     // Tiny delay so the browser paints 0% first, enabling the CSS transition
     const t = setTimeout(() => setDisplayedWidth(percent), 60);
     return () => clearTimeout(t);
   }, [percent]);
- 
+
   return (
     <>
-    <style>{`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
- 
+
         .pb-wrapper {
-        font-family: 'DM Sans', sans-serif;
-        width: 100%;
-        max-width: 680px;
+          font-family: 'DM Sans', sans-serif;
+          width: 100%;
+          max-width: 680px;
         }
 
         .pb-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 10px;
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          margin-bottom: 10px;
         }
- 
+
         .pb-label {
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        color: #6b7280;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.07em;
+          text-transform: uppercase;
+          color: #6b7280;
         }
 
         .pb-counter {
-        display: flex;
-        align-items: baseline;
-        gap: 2px;
+          display: flex;
+          align-items: baseline;
+          gap: 2px;
         }
 
         .pb-current {
@@ -63,21 +63,21 @@ export default function ProgressBar({
           line-height: 1;
           font-variant-numeric: tabular-nums;
         }
- 
+
         .pb-separator {
           font-size: 14px;
           font-weight: 500;
           color: #d1d5db;
           margin: 0 2px;
         }
- 
+
         .pb-total {
           font-size: 14px;
           font-weight: 500;
           color: #9ca3af;
           font-variant-numeric: tabular-nums;
         }
- 
+
         .pb-track {
           width: 100%;
           height: 8px;
@@ -86,7 +86,7 @@ export default function ProgressBar({
           overflow: hidden;
           position: relative;
         }
- 
+
         .pb-fill {
           height: 100%;
           border-radius: 999px;
@@ -94,7 +94,7 @@ export default function ProgressBar({
           transition: width 0.55s cubic-bezier(0.4, 0, 0.2, 1);
           position: relative;
         }
- 
+
         /* Shimmer sweep on the fill */
         .pb-fill::after {
           content: '';
@@ -109,12 +109,12 @@ export default function ProgressBar({
           animation: pb-shimmer 2s ease-in-out infinite;
           border-radius: inherit;
         }
- 
+
         @keyframes pb-shimmer {
           0%   { transform: translateX(-100%); }
           100% { transform: translateX(200%); }
         }
- 
+
         /* Complete state: green gradient, no shimmer */
         .pb-fill.pb-complete {
           background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
@@ -122,14 +122,14 @@ export default function ProgressBar({
         .pb-fill.pb-complete::after {
           display: none;
         }
- 
+
         .pb-footer {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-top: 8px;
         }
- 
+
         .pb-pct {
           font-size: 11px;
           font-weight: 600;
@@ -137,7 +137,7 @@ export default function ProgressBar({
           font-variant-numeric: tabular-nums;
           letter-spacing: 0.03em;
         }
- 
+
         .pb-done-badge {
           font-size: 11px;
           font-weight: 600;
@@ -151,13 +151,13 @@ export default function ProgressBar({
           transform: scale(0.85);
           transition: opacity 0.3s ease, transform 0.3s ease;
         }
- 
+
         .pb-done-badge.pb-done-visible {
           opacity: 1;
           transform: scale(1);
         }
       `}</style>
- 
+
       <div className="pb-wrapper" role="region" aria-label="Progress">
         {/* Header: label + counter */}
         <div className="pb-header">
@@ -168,7 +168,7 @@ export default function ProgressBar({
             <span className="pb-total">{total}</span>
           </div>
         </div>
- 
+
         {/* Track + animated fill */}
         <div
           className="pb-track"
@@ -182,7 +182,7 @@ export default function ProgressBar({
             style={{ width: `${displayedWidth}%` }}
           />
         </div>
- 
+
         {/* Footer: percentage + done badge */}
         <div className="pb-footer">
           <span className="pb-pct">{Math.round(percent)}% complete</span>
