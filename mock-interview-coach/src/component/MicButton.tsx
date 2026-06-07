@@ -1,8 +1,16 @@
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import TranscriptBox from "./Transcript.tsx";
 
 export default function MicButton() {
-  const { isListening, isSupported, startListening, stopListening, transcript, error } =
-    useSpeechRecognition();
+  const {
+    isListening,
+    isSupported,
+    startListening,
+    stopListening,
+    transcript,
+    setTranscript,
+    error,
+  } = useSpeechRecognition();
 
   const handleClick = () => {
     if (isListening) stopListening();
@@ -10,8 +18,9 @@ export default function MicButton() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-5">
+    <div className="flex flex-col items-center gap-5 w-full max-w-lg">
 
+      {/* Mic button */}
       <div className="relative flex items-center justify-center">
         {isListening && (
           <>
@@ -20,7 +29,6 @@ export default function MicButton() {
             <span className="mic-ring mic-ring-3" />
           </>
         )}
-
         <button
           onClick={handleClick}
           disabled={!isSupported}
@@ -38,18 +46,17 @@ export default function MicButton() {
         </button>
       </div>
 
-      <p className={`text-sm font-medium tracking-wide transition-colors duration-300 ${isListening ? "text-red-400" : "text-gray-400"}`}>
+      {/* Status */}
+      <p className={`text-sm font-medium tracking-wide transition-colors duration-300 ${isListening ? "text-red-400" : "text-[var(--text-muted)]"}`}>
         {!isSupported ? "Not supported" : isListening ? "Listening..." : "Click to speak"}
       </p>
 
-        {/*For test purposes remove na lng*/}
-      {transcript && (
-        <p className="max-w-xs text-center text-sm bg-white/10 text-white px-4 py-2 rounded-xl">
-          {transcript}
-        </p>
-      )}
+      {/* Transcript box */}
+      <TranscriptBox transcript={transcript} onChange={setTranscript} />
 
+      {/* Error */}
       {error && <p className="text-xs text-red-400">{error}</p>}
+
     </div>
   );
 }

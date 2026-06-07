@@ -1,59 +1,102 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface SpeechRecognitionResult {
   transcript: string;
   isListening: boolean;
   error: string | null;
+  isSupported: boolean;
   startListening: () => void;
   stopListening: () => void;
-  isSupported: boolean;
+  setTranscript: (val: string) => void; // so TranscriptBox can edit it
+}
+
+interface SpeechRecognitionResultItem {
+  isFinal: boolean;
+  0: { transcript: string };
+}
+
+interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: SpeechRecognitionResultItem[];
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+}
+
+interface SpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
 }
 
 export function useSpeechRecognition(): SpeechRecognitionResult {
   const [transcript, setTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const isListeningRef = useRef(false);
 
-  // ✅ Check AFTER all hooks are declared
-  const SpeechRecognitionAPI =
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const isListeningRef = useRef(false);
+  const finalTranscriptRef = useRef("");
+
+  type SpeechRecognitionConstructor = new () => SpeechRecognition;
+  const SpeechRecognitionAPI: SpeechRecognitionConstructor | null =
     typeof window !== "undefined"
-      ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition) ?? null
       : null;
+
   const isSupported = !!SpeechRecognitionAPI;
 
   useEffect(() => {
-    // ✅ Guard is inside useEffect, not before hooks
     if (!isSupported || !SpeechRecognitionAPI) return;
 
     const recognition = new SpeechRecognitionAPI();
+
+    // ✅ Accuracy improvements
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+    recognition.maxAlternatives = 3; // consider top 3 guesses, pick best
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let fullTranscript = "";
-      for (let i = 0; i < event.results.length; i++) {
-        fullTranscript += event.results[i][0].transcript + " ";
+      let interimTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const text = result[0].transcript;
+
+        if (result.isFinal) {
+          // ✅ Final result — confirmed word, lock it in
+          finalTranscriptRef.current += text + " ";
+        } else {
+          // In-progress word — show as interim
+          interimTranscript += text;
+        }
       }
-      setTranscript(fullTranscript.trim());
+
+      // Show final + interim together in real time
+      setTranscript((finalTranscriptRef.current + interimTranscript).trim());
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error === "no-speech") return;
+      if (event.error === "no-speech") return; // ignore silence
+      if (event.error === "aborted") return;   // ignore manual stop
       setError(event.error);
       isListeningRef.current = false;
       setIsListening(false);
     };
 
     recognition.onend = () => {
+      // Chrome stops itself — restart if still supposed to be listening
       if (isListeningRef.current) {
-        try {
-          recognition.start();
-        } catch (e) {
-          // Already started, ignore
-        }
+        try { recognition.start(); } catch (_) {}
       } else {
         setIsListening(false);
       }
@@ -63,27 +106,39 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
 
     return () => {
       isListeningRef.current = false;
-      recognition.stop();
+      recognition.abort();
     };
   }, [isSupported]);
 
-  const startListening = () => {
+  const startListening = useCallback(() => {
     if (!isSupported) {
       setError("Speech recognition is not supported in this browser.");
       return;
     }
+    // Reset everything on fresh start
     setError(null);
     setTranscript("");
+    finalTranscriptRef.current = "";
     isListeningRef.current = true;
     setIsListening(true);
-    recognitionRef.current?.start();
-  };
+    try {
+      recognitionRef.current?.start();
+    } catch (_) {}
+  }, [isSupported]);
 
-  const stopListening = () => {
+  const stopListening = useCallback(() => {
     isListeningRef.current = false;
     setIsListening(false);
     recognitionRef.current?.stop();
-  };
+  }, []);
 
-  return { transcript, isListening, error, startListening, stopListening, isSupported };
+  return {
+    transcript,
+    isListening,
+    error,
+    isSupported,
+    startListening,
+    stopListening,
+    setTranscript, // expose so TranscriptBox edits work
+  };
 }
