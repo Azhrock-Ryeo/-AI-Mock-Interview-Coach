@@ -7,7 +7,7 @@ interface SpeechRecognitionResult {
   isSupported: boolean;
   startListening: () => void;
   stopListening: () => void;
-  setTranscript: (val: string) => void; // so TranscriptBox can edit it
+  setTranscript: (val: string) => void;
 }
 
 interface SpeechRecognitionResultItem {
@@ -59,11 +59,10 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
 
     const recognition = new SpeechRecognitionAPI();
 
-    // ✅ Accuracy improvements
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
-    recognition.maxAlternatives = 3; // consider top 3 guesses, pick best
+    recognition.maxAlternatives = 3; // pick best of top 3 guesses
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interimTranscript = "";
@@ -73,7 +72,7 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
         const text = result[0].transcript;
 
         if (result.isFinal) {
-          // ✅ Final result — confirmed word, lock it in
+          // Confirmed word — lock it in
           finalTranscriptRef.current += text + " ";
         } else {
           // In-progress word — show as interim
@@ -108,14 +107,13 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
       isListeningRef.current = false;
       recognition.abort();
     };
-  }, [isSupported]);
+  }, [isSupported]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startListening = useCallback(() => {
     if (!isSupported) {
       setError("Speech recognition is not supported in this browser.");
       return;
     }
-    // Reset everything on fresh start
     setError(null);
     setTranscript("");
     finalTranscriptRef.current = "";
@@ -139,6 +137,6 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
     isSupported,
     startListening,
     stopListening,
-    setTranscript, // expose so TranscriptBox edits work
+    setTranscript,
   };
 }

@@ -1,5 +1,5 @@
-import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
-import TranscriptBox from "./Transcript.tsx";
+import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
+import TranscriptBox from "./Transcript";
 
 export default function MicButton() {
   const {
