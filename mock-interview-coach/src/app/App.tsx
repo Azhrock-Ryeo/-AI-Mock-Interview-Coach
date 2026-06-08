@@ -1,21 +1,20 @@
-import { RouterProvider } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { InterviewProvider } from './providers/InterviewProvider'
-import router from './router'
-import '../styles/globals.css'
-import '../styles/mic.css'
-import Timer from '../components/shared/Timer.tsx'
-import MicButton from '../components/shared/MicButton.tsx'  // 👈 add this
+import LandingPage from '../pages/LandingPage'
+import Interview from '../pages/InterviewPage'
+import NotFoundPage from '../pages/NotFoundPage'
+import '../index.css'
 
-export default function App() {
-  return (
-    <InterviewProvider>
-      <RouterProvider router={router} />
-      <Timer duration={90}/>
+const App = () => (
+  <InterviewProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/interview" element={<Interview />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </BrowserRouter>
+  </InterviewProvider>
+)
 
-      {/*Temporary test — delete after confirming it works */}
-      <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999 }}>
-        <MicButton />
-      </div>
-    </InterviewProvider>
-  )
-}
+export default App
