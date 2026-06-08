@@ -57,8 +57,17 @@ export default function LandingPage() {
       questionCount: form.questionCount as number,
     }
 
+    // Save to context (for ResultsPage)
+    setSetup(setup)
+
+    // Also write to sessionStorage so InterviewPage can read it on mount
+    sessionStorage.setItem('interview_role', setup.jobRole)
+    sessionStorage.setItem('interview_difficulty', setup.difficulty.toLowerCase())
+    sessionStorage.setItem('interview_type', setup.interviewType.toLowerCase())
+    sessionStorage.setItem('interview_count', String(setup.questionCount))
+    sessionStorage.setItem('interview_userName', setup.userName)
+
     setTimeout(() => {
-      setSetup(setup)
       navigate('/interview')
     }, 600)
   }
@@ -72,7 +81,7 @@ export default function LandingPage() {
 
       <div className="relative max-w-2xl mx-auto px-4 py-16 space-y-10">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-xs font-medium">
             ✦ AI-Powered Interview Practice
@@ -96,7 +105,7 @@ export default function LandingPage() {
           )}
         </div>
 
-        {/* ── Form Card ── */}
+        {/* Form Card */}
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 sm:p-8 space-y-5">
           <div>
             <h2 className="text-lg font-semibold">Configure Your Session</h2>
@@ -105,7 +114,9 @@ export default function LandingPage() {
 
           {/* Name */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-white/70">Your Name</label>
+            <label className="text-sm font-medium text-white/70">
+              <span className="mr-1.5">👤</span>Your Name
+            </label>
             <input
               type="text"
               value={form.userName}
@@ -123,68 +134,75 @@ export default function LandingPage() {
 
             {/* Job Role */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-white/70">Job Role</label>
+              <label className="text-sm font-medium text-white/70">
+                <span className="mr-1.5">💼</span>Job Role
+              </label>
               <select
                 value={form.jobRole}
                 onChange={e => update('jobRole', e.target.value)}
-                className={`w-full rounded-xl border bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 ${
+                className={`w-full rounded-xl border bg-[#0a0a0f] px-3 py-2.5 text-sm text-white outline-none transition-colors focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 ${
                   errors.jobRole ? 'border-red-500/50' : 'border-white/10 hover:border-white/20'
                 } ${!form.jobRole ? 'text-white/30' : ''}`}
               >
-                <option value="" disabled className="bg-[#0a0a0f]">Select a role</option>
-                {JOB_ROLES.map(r => <option key={r} value={r} className="bg-[#0a0a0f]">{r}</option>)}
+                <option value="" disabled>Select a role</option>
+                {JOB_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
               {errors.jobRole && <p className="text-xs text-red-400">{errors.jobRole}</p>}
             </div>
 
             {/* Difficulty */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-white/70">Difficulty</label>
+              <label className="text-sm font-medium text-white/70">
+                <span className="mr-1.5">📊</span>Difficulty
+              </label>
               <select
                 value={form.difficulty}
                 onChange={e => update('difficulty', e.target.value as Difficulty)}
-                className={`w-full rounded-xl border bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 ${
+                className={`w-full rounded-xl border bg-[#0a0a0f] px-3 py-2.5 text-sm text-white outline-none transition-colors focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 ${
                   errors.difficulty ? 'border-red-500/50' : 'border-white/10 hover:border-white/20'
                 } ${!form.difficulty ? 'text-white/30' : ''}`}
               >
-                <option value="" disabled className="bg-[#0a0a0f]">Select difficulty</option>
-                {DIFFICULTIES.map(d => <option key={d} value={d} className="bg-[#0a0a0f]">{d}</option>)}
+                <option value="" disabled>Select difficulty</option>
+                {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               {errors.difficulty && <p className="text-xs text-red-400">{errors.difficulty}</p>}
             </div>
 
             {/* Interview Type */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-white/70">Interview Type</label>
+              <label className="text-sm font-medium text-white/70">
+                <span className="mr-1.5">💬</span>Interview Type
+              </label>
               <select
                 value={form.interviewType}
                 onChange={e => update('interviewType', e.target.value as InterviewType)}
-                className={`w-full rounded-xl border bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 ${
+                className={`w-full rounded-xl border bg-[#0a0a0f] px-3 py-2.5 text-sm text-white outline-none transition-colors focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 ${
                   errors.interviewType ? 'border-red-500/50' : 'border-white/10 hover:border-white/20'
                 } ${!form.interviewType ? 'text-white/30' : ''}`}
               >
-                <option value="" disabled className="bg-[#0a0a0f]">Select type</option>
-                {INTERVIEW_TYPES.map(t => <option key={t} value={t} className="bg-[#0a0a0f]">{t}</option>)}
+                <option value="" disabled>Select type</option>
+                {INTERVIEW_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
               {errors.interviewType && <p className="text-xs text-red-400">{errors.interviewType}</p>}
             </div>
 
             {/* Number of Questions */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-white/70">Number of Questions</label>
+              <label className="text-sm font-medium text-white/70">
+                <span className="mr-1.5">#</span>Number of Questions
+              </label>
               <select
                 value={form.questionCount}
                 onChange={e => update('questionCount', Number(e.target.value))}
-                className={`w-full rounded-xl border bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 ${
+                className={`w-full rounded-xl border bg-[#0a0a0f] px-3 py-2.5 text-sm text-white outline-none transition-colors focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 ${
                   errors.questionCount ? 'border-red-500/50' : 'border-white/10 hover:border-white/20'
                 } ${!form.questionCount ? 'text-white/30' : ''}`}
               >
-                <option value="" disabled className="bg-[#0a0a0f]">Select count</option>
-                {NUM_QUESTIONS.map(n => <option key={n} value={n} className="bg-[#0a0a0f]">{n} Questions</option>)}
+                <option value="" disabled>Select count</option>
+                {NUM_QUESTIONS.map(n => <option key={n} value={n}>{n} Questions</option>)}
               </select>
               {errors.questionCount && <p className="text-xs text-red-400">{errors.questionCount}</p>}
             </div>
-
           </div>
 
           {/* Preview badges */}

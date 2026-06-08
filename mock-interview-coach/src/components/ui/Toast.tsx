@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react"
 
 export type ToastVariant = 'success' | 'error' | 'info'
 
@@ -7,6 +7,10 @@ export interface ToastProps {
   variant?: ToastVariant
   duration?: number
   onDismiss?: () => void
+}
+
+export interface ToastItem extends ToastProps {
+  id: string
 }
 
 const VARIANT_STYLES: Record<ToastVariant, string> = {
@@ -29,7 +33,6 @@ export function Toast({
 }: ToastProps) {
   const [visible, setVisible] = useState(false)
 
-  // Slide in on mount
   useEffect(() => {
     const showTimer = setTimeout(() => setVisible(true), 10)
     const hideTimer = setTimeout(() => {
@@ -71,15 +74,6 @@ export function Toast({
   )
 }
 
-// ─── ToastContainer ───────────────────────────────────────────────────────────
-// Usage: place <ToastContainer /> at the root of your app once,
-// then call the exported `toast` helper anywhere.
-
-export interface ToastItem extends ToastProps {
-  id: string
-}
-
-// Simple global toast state — no external library needed
 let _setToasts: React.Dispatch<React.SetStateAction<ToastItem[]>> | null = null
 
 export function toast(message: string, variant: ToastVariant = 'info', duration = 3000) {
