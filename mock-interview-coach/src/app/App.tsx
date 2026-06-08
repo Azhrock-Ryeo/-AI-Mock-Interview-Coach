@@ -4,12 +4,15 @@ import router from './router'
 import '../styles/globals.css'
 import '../styles/mic.css'
 import Timer from '../components/shared/Timer.tsx'
-import MicButton from '../components/shared/MicButton.tsx'  // 👈 add this
+import MicButton from '../components/shared/MicButton.tsx'
+import { ToastContainer } from '../components/ui/Toast'
 
 export default function App() {
   return (
     <InterviewProvider>
       <RouterProvider router={router} />
+      <ToastContainer />          {/* ← just add this line */}
+
       <Timer duration={90}/>
 
       {/*Temporary test — delete after confirming it works */}
