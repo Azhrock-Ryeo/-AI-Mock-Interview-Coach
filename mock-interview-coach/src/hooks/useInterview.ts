@@ -1,71 +1,45 @@
 import { useCallback, useRef, useState } from "react";
 import { evaluateAnswer, generateSummary } from "../services/groq.service";
 import { saveSession } from "../utils/storage";
-import type { Feedback, Session } from "../types/interview.types";
+import { getGrade } from "../utils/scoring";
+import type { Difficulty, Feedback, InterviewType, Session } from "../types/interview.types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type InterviewStatus =
-  | "idle"       // hook initialized, no interview started
-  | "loading"    // waiting for Groq API
-  | "answering"  // user is composing/speaking their answer
-  | "evaluating" // answer submitted, Groq evaluating
-  | "feedback"   // feedback received, waiting for user to continue
-  | "done";      // all questions answered, session saved
+  | "idle"
+  | "loading"
+  | "answering"
+  | "evaluating"
+  | "feedback"
+  | "done";
 
 export interface UseInterviewOptions {
-  questions: string[];       // pre-loaded question strings
-  role: string;              // job role (for Groq prompt context)
-  difficulty: string;        // "beginner" | "intermediate" | "advanced"
-  type: string;              // "technical" | "behavioral" | "mixed"
-  sessionId?: string;        // optional override; defaults to crypto.randomUUID()
+  questions: string[];
+  role: string;
+  difficulty: string;
+  type: string;
+  userName?: string;
+  sessionId?: string;
 }
 
 export interface UseInterviewReturn {
-  // ── State ──────────────────────────────────────────────────────────────────
   status: InterviewStatus;
   currentIndex: number;
   answers: string[];
-  feedbacks: Feedback[];
+  feedbacks: (Feedback | null)[];
   scores: number[];
   isLoading: boolean;
   error: string | null;
   currentFeedback: Feedback | null;
-
-  // ── Derived ────────────────────────────────────────────────────────────────
   totalQuestions: number;
   averageScore: number;
   isLastQuestion: boolean;
   progressPercent: number;
-
-  // ── Actions ────────────────────────────────────────────────────────────────
-
-  /**
-   * Submit the user's answer for the current question.
-   * Calls Groq → stores feedback + score → moves status to "feedback".
-   */
   submitAnswer: (answer: string) => Promise<void>;
-
-  /**
-   * Advance to the next question (or call endInterview if on the last one).
-   * Resets transient state (current answer, current feedback).
-   */
   nextQuestion: () => void;
-
-  /**
-   * Skip the current question without evaluating.
-   * Records an empty answer + null feedback, then advances.
-   */
   skipQuestion: () => void;
-
-  /**
-   * Finalize the session: generate a summary, save to localStorage, and
-   * set status to "done". Returns the saved session for the caller to
-   * navigate to /results or display inline.
-   */
   endInterview: () => Promise<Session | null>;
-
-  /** Manually clear any error state. */
   clearError: () => void;
 }
 
@@ -76,23 +50,20 @@ export function useInterview({
   role,
   difficulty,
   type,
+  userName = "User",
   sessionId: overrideSessionId,
 }: UseInterviewOptions): UseInterviewReturn {
 
-  // ── Core session state ─────────────────────────────────────────────────────
   const [status, setStatus] = useState<InterviewStatus>("answering");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [feedbacks, setFeedbacks] = useState<(Feedback | null)[]>([]);  // ✅ allows null
   const [scores, setScores] = useState<number[]>([]);
   const [currentFeedback, setCurrentFeedback] = useState<Feedback | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Stable session ID for the entire interview lifecycle
-  const sessionIdRef = useRef<string>(
-    overrideSessionId ?? crypto.randomUUID()
-  );
+  const sessionIdRef = useRef<string>(overrideSessionId ?? crypto.randomUUID());
 
   const totalQuestions = questions.length;
   const isLastQuestion = currentIndex === totalQuestions - 1;
@@ -110,7 +81,6 @@ export function useInterview({
 
       const trimmed = answer.trim();
 
-      // Persist the raw answer immediately (even if empty)
       setAnswers((prev) => {
         const updated = [...prev];
         updated[currentIndex] = trimmed;
@@ -118,10 +88,9 @@ export function useInterview({
       });
 
       if (!trimmed) {
-        // Treat as a skip if nothing was typed/spoken
         setFeedbacks((prev) => {
           const updated = [...prev];
-          updated[currentIndex] = null as unknown as Feedback;
+          updated[currentIndex] = null;  // ✅ null instead of cast
           return updated;
         });
         setScores((prev) => {
@@ -138,17 +107,13 @@ export function useInterview({
       setIsLoading(true);
       setError(null);
 
-      const result = await evaluateAnswer(
-        questions[currentIndex],
-        trimmed,
-        role
-      );
+      const result = await evaluateAnswer(questions[currentIndex], trimmed, role);
 
       setIsLoading(false);
 
       if (result.error || !result.data) {
         setError(result.error ?? "Failed to evaluate your answer. Please try again.");
-        setStatus("answering"); // let user retry
+        setStatus("answering");
         return;
       }
 
@@ -159,13 +124,11 @@ export function useInterview({
         updated[currentIndex] = fb;
         return updated;
       });
-
       setScores((prev) => {
         const updated = [...prev];
         updated[currentIndex] = fb.score;
         return updated;
       });
-
       setCurrentFeedback(fb);
       setStatus("feedback");
     },
@@ -175,11 +138,9 @@ export function useInterview({
   // ── nextQuestion ───────────────────────────────────────────────────────────
   const nextQuestion = useCallback(() => {
     if (isLastQuestion) {
-      // Caller should invoke endInterview() separately — this just resets state
       setStatus("done");
       return;
     }
-
     setCurrentIndex((i) => i + 1);
     setCurrentFeedback(null);
     setError(null);
@@ -188,7 +149,6 @@ export function useInterview({
 
   // ── skipQuestion ───────────────────────────────────────────────────────────
   const skipQuestion = useCallback(() => {
-    // Record empty answer + no feedback for this slot
     setAnswers((prev) => {
       const updated = [...prev];
       updated[currentIndex] = "";
@@ -196,7 +156,7 @@ export function useInterview({
     });
     setFeedbacks((prev) => {
       const updated = [...prev];
-      updated[currentIndex] = null as unknown as Feedback;
+      updated[currentIndex] = null;  // ✅ null instead of cast
       return updated;
     });
     setScores((prev) => {
@@ -220,38 +180,34 @@ export function useInterview({
     setIsLoading(true);
     setError(null);
 
-    // Filter out nulls (skipped questions) before summarising
-    const validFeedbacks = feedbacks.filter(Boolean);
-
-    let summary: { strengths: string; weaknesses: string } = {
-      strengths: "",
-      weaknesses: "",
-    };
+    const validFeedbacks = feedbacks.filter((f): f is Feedback => f !== null);
 
     if (validFeedbacks.length > 0) {
       const result = await generateSummary(validFeedbacks);
-      if (result.data) {
-        summary = result.data;
-      } else {
-        // Non-fatal: log but continue saving the session
+      if (!result.data) {
         console.warn("[useInterview] Summary generation failed:", result.error);
       }
     }
 
     setIsLoading(false);
 
+    // ✅ Correctly shaped Session object matching interview.types.ts
     const session: Session = {
       id: sessionIdRef.current,
       date: new Date().toISOString(),
-      role,
-      difficulty,
-      type,
+      setup: {
+        userName,
+        jobRole: role,
+        difficulty: difficulty as Difficulty,
+        interviewType: type as InterviewType,
+        questionCount: questions.length,
+      },
       questions,
       answers,
       feedbacks: validFeedbacks,
       scores,
-      averageScore,
-      summary,
+      overallScore: averageScore,
+      grade: getGrade(averageScore),
     };
 
     try {
@@ -262,14 +218,12 @@ export function useInterview({
 
     setStatus("done");
     return session;
-  }, [answers, averageScore, difficulty, feedbacks, questions, role, scores, type]);
+  }, [answers, averageScore, difficulty, feedbacks, questions, role, scores, type, userName]);
 
   // ── clearError ─────────────────────────────────────────────────────────────
   const clearError = useCallback(() => setError(null), []);
 
-  // ── Return ─────────────────────────────────────────────────────────────────
   return {
-    // State
     status,
     currentIndex,
     answers,
@@ -278,14 +232,10 @@ export function useInterview({
     isLoading,
     error,
     currentFeedback,
-
-    // Derived
     totalQuestions,
     averageScore,
     isLastQuestion,
     progressPercent,
-
-    // Actions
     submitAnswer,
     nextQuestion,
     skipQuestion,
