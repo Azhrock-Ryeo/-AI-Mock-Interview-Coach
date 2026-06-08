@@ -42,3 +42,8 @@ export interface InterviewContextType {
   setScores: (scores: number[]) => void
   resetInterview: () => void
 }
+
+export interface SessionSummary {
+  strengths: string
+  weaknesses: string
+}

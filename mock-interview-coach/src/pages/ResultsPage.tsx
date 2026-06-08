@@ -50,21 +50,25 @@ export default function ResultsPage() {
   }, [setup, questions, navigate])
 
   // ─── Generate AI summary ──────────────────────────────────────────────────
-  useEffect(() => {
-    if (feedbacks.length === 0) return
+useEffect(() => {
+  if (feedbacks.length === 0) return
 
-    setSummaryLoading(true)
-    generateSummary(feedbacks)
-      .then((result) => {
-        setSummary(result)
-        setSummaryLoading(false)
-      })
-      .catch((err) => {
-        console.error(err)
-        setSummaryError('Could not generate summary. Please try again.')
-        setSummaryLoading(false)
-      })
-  }, [feedbacks])
+  setSummaryLoading(true)
+  generateSummary(feedbacks)
+    .then((result) => {
+      if (result.error) {
+        setSummaryError(result.error)
+      } else {
+        setSummary(result.data)   // ← .data here
+      }
+      setSummaryLoading(false)
+    })
+    .catch((err) => {
+      console.error(err)
+      setSummaryError('Could not generate summary. Please try again.')
+      setSummaryLoading(false)
+    })
+}, [feedbacks])
 
   // ─── Auto-save session ────────────────────────────────────────────────────
   useEffect(() => {
