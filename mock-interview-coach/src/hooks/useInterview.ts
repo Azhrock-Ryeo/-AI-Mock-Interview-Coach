@@ -3,7 +3,8 @@ import { evaluateAnswer, generateSummary } from "../services/groq.service";
 import { saveSession } from "../utils/storage";
 import { getGrade } from "../utils/scoring";
 import type { Difficulty, Feedback, InterviewType, Session } from "../types/interview.types";
-
+ //fixed some
+ 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type InterviewStatus =
