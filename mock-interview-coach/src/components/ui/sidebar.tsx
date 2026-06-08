@@ -4,25 +4,31 @@ import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
-import { useIsMobile } from "../../hooks/use-mobile.tsx"
-import { cn } from "../../lib/utils.tsx"
-import { Button } from "./Button.tsx"
-import { Input } from "./input.tsx"
-import { Separator } from "./separator.tsx"
+
+import { useIsMobile } from "../../hooks/use-mobile"
+import { cn } from "../../lib/utils"
+import { Button } from "../../components/ui/Button"
+import { Input } from "../../components/ui/input"
+import { Separator } from "../../components/ui/separator"
+ da9cb45e9c17f3caa44df60373cebe507628c6e4
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "./sheet.tsx"
-import { Skeleton } from "./skeleton.tsx"
+
+} from "../../components/ui/sheet"
+import { Skeleton } from "../../components/ui/Skeleton"
+ da9cb45e9c17f3caa44df60373cebe507628c6e4
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "./tooltip.tsx"
+
+} from "../../components/ui/tooltip"
+ da9cb45e9c17f3caa44df60373cebe507628c6e4
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -677,15 +683,14 @@ const SidebarMenuSkeleton = React.forwardRef<
           data-sidebar="menu-skeleton-icon"
         />
       )}
-      <Skeleton
-        className="h-4 max-w-[--skeleton-width] flex-1"
-        data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
-      />
+
+      <div style={{ "--skeleton-width": width } as React.CSSProperties}>
+        <Skeleton
+          className="h-4 max-w-[--skeleton-width] flex-1"
+          data-sidebar="menu-skeleton-text"
+        />
+      </div>
+ da9cb45e9c17f3caa44df60373cebe507628c6e4
     </div>
   )
 })

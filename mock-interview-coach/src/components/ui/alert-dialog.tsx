@@ -1,8 +1,10 @@
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
-import { cn } from "../../lib/utils.tsx"
-import { buttonVariants } from "./Button.tsx"
+
+import { cn } from "../../lib/utils"
+import { buttonVariants } from "../../components/ui/Button"
+ da9cb45e9c17f3caa44df60373cebe507628c6e4
 
 const AlertDialog = AlertDialogPrimitive.Root
 
