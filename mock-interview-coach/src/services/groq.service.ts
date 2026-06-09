@@ -2,15 +2,11 @@ import { GROQ_API_KEY } from '../config/env'
 import type { Feedback, SessionSummary } from '../types/interview.types'
 import { questionPrompt, feedbackPrompt, summaryPrompt } from '../utils/prompts'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface GroqServiceResult<T> {
   data: T | null
   error: string | null
   isLoading: boolean
 }
-
-// ─── Core API Caller ──────────────────────────────────────────────────────────
 
 async function callGroq(prompt: string): Promise<string> {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -40,20 +36,35 @@ async function callGroq(prompt: string): Promise<string> {
   return content
 }
 
-// ─── Safe JSON Parser ─────────────────────────────────────────────────────────
-
 function parseJSON<T>(raw: string): T {
-  const cleaned = raw
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim()
+  let cleaned = raw.trim()
 
-  return JSON.parse(cleaned) as T
+  // Strip markdown code blocks
+  cleaned = cleaned.replace(/^```json\s*/i, '')
+  cleaned = cleaned.replace(/^```\s*/i, '')
+  cleaned = cleaned.replace(/```\s*$/i, '')
+  cleaned = cleaned.trim()
+
+  // Extract first JSON array or object if there's extra text around it
+  const arrayMatch = cleaned.match(/\[[\s\S]*\]/)
+  const objectMatch = cleaned.match(/\{[\s\S]*\}/)
+
+  if (arrayMatch) {
+    cleaned = arrayMatch[0]
+  } else if (objectMatch) {
+    cleaned = objectMatch[0]
+  }
+
+  // Fix common Groq JSON issues — trailing commas
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1')
+
+  try {
+    return JSON.parse(cleaned) as T
+  } catch (err) {
+    console.error('[parseJSON] Failed to parse:', cleaned)
+    throw new Error(`JSON parse failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
 }
-
-// ─── generateQuestions ────────────────────────────────────────────────────────
 
 export async function generateQuestions(
   role: string,
@@ -80,8 +91,6 @@ export async function generateQuestions(
     }
   }
 }
-
-// ─── evaluateAnswer ───────────────────────────────────────────────────────────
 
 export async function evaluateAnswer(
   question: string,
@@ -114,8 +123,6 @@ export async function evaluateAnswer(
     }
   }
 }
-
-// ─── generateSummary ──────────────────────────────────────────────────────────
 
 export async function generateSummary(
   feedbacks: Feedback[]
