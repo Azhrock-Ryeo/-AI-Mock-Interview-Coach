@@ -58,12 +58,7 @@ const Navbar = () => {
           {currentUser ? (
             <>
               {/* Logged-in links */}
-              <Link
-                to="/interview"
-                className="hidden sm:block text-sm text-foreground/60 hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted transition-colors duration-150"
-              >
-                Start Interview
-              </Link>
+              
               <Link
                 to="/progress"
                 className="hidden sm:block text-sm text-foreground/60 hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted transition-colors duration-150"
