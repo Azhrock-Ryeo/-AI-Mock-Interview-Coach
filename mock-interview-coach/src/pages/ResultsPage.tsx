@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInterviewContext } from '../app/providers/InterviewProvider'
+import { useAuthContext } from '../context/AuthContext'
 import { ScoreCard } from '../components/shared/ScoreCard'
 import { FeedbackCard } from '../components/shared/FeedbackCard'
 import { HistoryList } from '../components/shared/HistoryList'
 import { generateSummary } from '../services/groq.service'
 import { calculateAverage, getGrade } from '../utils/scoring'
-import { saveSession } from '../utils/storage'
+import { saveSession, saveSessionForUser } from '../utils/storage'
 import type { Session, SessionSummary } from '../types/interview.types'
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SummarySkeleton() {
   return (
@@ -21,10 +20,9 @@ function SummarySkeleton() {
   )
 }
 
-// ─── ResultsPage ──────────────────────────────────────────────────────────────
-
 export default function ResultsPage() {
   const navigate = useNavigate()
+  const { currentUser } = useAuthContext()
   const {
     setup,
     questions,
@@ -42,35 +40,32 @@ export default function ResultsPage() {
   const overallScore = calculateAverage(scores)
   const grade = getGrade(overallScore)
 
-  // ─── Guard: redirect if no session data ───────────────────────────────────
   useEffect(() => {
     if (!setup || questions.length === 0) {
       navigate('/')
     }
   }, [setup, questions, navigate])
 
-  // ─── Generate AI summary ──────────────────────────────────────────────────
-useEffect(() => {
-  if (feedbacks.length === 0) return
+  useEffect(() => {
+    if (feedbacks.length === 0) return
+    setSummaryLoading(true)
+    generateSummary(feedbacks)
+      .then((result) => {
+        if (result.error) {
+          setSummaryError(result.error)
+        } else {
+          setSummary(result.data)
+        }
+        setSummaryLoading(false)
+      })
+      .catch((err) => {
+        console.error(err)
+        setSummaryError('Could not generate summary. Please try again.')
+        setSummaryLoading(false)
+      })
+  }, [feedbacks])
 
-  setSummaryLoading(true)
-  generateSummary(feedbacks)
-    .then((result) => {
-      if (result.error) {
-        setSummaryError(result.error)
-      } else {
-        setSummary(result.data)   // ← .data here
-      }
-      setSummaryLoading(false)
-    })
-    .catch((err) => {
-      console.error(err)
-      setSummaryError('Could not generate summary. Please try again.')
-      setSummaryLoading(false)
-    })
-}, [feedbacks])
-
-  // ─── Auto-save session ────────────────────────────────────────────────────
+  // ─── Auto-save to localStorage AND Firestore ──────────────────────────────
   useEffect(() => {
     if (!setup || saved || feedbacks.length === 0) return
 
@@ -86,20 +81,23 @@ useEffect(() => {
       grade,
     }
 
+    // Always save to localStorage (legacy)
     saveSession(session)
+
+    // Also save to Firestore if user is logged in
+    if (currentUser) {
+      saveSessionForUser(currentUser.uid, session)
+        .then(() => console.log('Session saved to Firestore ✅'))
+        .catch((err) => console.error('Firestore save failed:', err))
+    }
+
     setSaved(true)
   }, [setup, feedbacks, saved])
 
-  // ─── Handlers ─────────────────────────────────────────────────────────────
-
   function handleTryAgain() {
-    // Keep setup, reset session data only
     const currentSetup = setup
     resetInterview()
-    // Re-apply setup so the interview page knows what to load
     if (currentSetup) {
-      // InterviewProvider's resetInterview clears setup too,
-      // so we navigate with state as a fallback
       navigate('/interview', { state: { setup: currentSetup } })
     }
   }
@@ -113,31 +111,22 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
-      {/* Background glow */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-violet-600/10 rounded-full blur-[120px]" />
       </div>
 
       <div className="relative max-w-3xl mx-auto px-4 py-12 space-y-10">
 
-        {/* ── Header ── */}
         <div className="text-center space-y-1">
           <p className="text-sm text-white/40 font-mono uppercase tracking-widest">Session Complete</p>
-          <h1 className="text-3xl font-bold text-white">
-            {setup.userName}'s Results
-          </h1>
+          <h1 className="text-3xl font-bold text-white">{setup.userName}'s Results</h1>
           <p className="text-white/50 text-sm">{setup.jobRole} · {setup.difficulty} · {setup.interviewType}</p>
         </div>
 
-        {/* ── Score Card ── */}
         <ScoreCard score={overallScore} grade={grade} />
 
-        {/* ── AI Summary ── */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-white/80 border-b border-white/10 pb-2">
-            AI Coach Summary
-          </h2>
-
+          <h2 className="text-lg font-semibold text-white/80 border-b border-white/10 pb-2">AI Coach Summary</h2>
           {summaryLoading ? (
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -150,9 +139,7 @@ useEffect(() => {
               </div>
             </div>
           ) : summaryError ? (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">
-              {summaryError}
-            </div>
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">{summaryError}</div>
           ) : summary ? (
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
@@ -167,44 +154,28 @@ useEffect(() => {
           ) : null}
         </div>
 
-        {/* ── Per-question Feedback ── */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-white/80 border-b border-white/10 pb-2">
-            Question Breakdown
-          </h2>
+          <h2 className="text-lg font-semibold text-white/80 border-b border-white/10 pb-2">Question Breakdown</h2>
           {questions.map((q, i) => (
             feedbacks[i] ? (
-              <FeedbackCard
-                key={i}
-                feedback={feedbacks[i]}
-                questionNumber={i + 1}
-                question={q}
-              />
+              <FeedbackCard key={i} feedback={feedbacks[i]} questionNumber={i + 1} question={q} />
             ) : null
           ))}
         </div>
 
-        {/* ── Action Buttons ── */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <button
-            onClick={handleTryAgain}
-            className="flex-1 py-3 px-6 rounded-xl border border-violet-500/40 bg-violet-500/10 text-violet-300 font-semibold hover:bg-violet-500/20 transition-colors duration-200"
-          >
+          <button onClick={handleTryAgain}
+            className="flex-1 py-3 px-6 rounded-xl border border-violet-500/40 bg-violet-500/10 text-violet-300 font-semibold hover:bg-violet-500/20 transition-colors duration-200">
             🔁 Try Again
           </button>
-          <button
-            onClick={handleNewInterview}
-            className="flex-1 py-3 px-6 rounded-xl border border-white/10 bg-white/5 text-white/70 font-semibold hover:bg-white/10 transition-colors duration-200"
-          >
+          <button onClick={handleNewInterview}
+            className="flex-1 py-3 px-6 rounded-xl border border-white/10 bg-white/5 text-white/70 font-semibold hover:bg-white/10 transition-colors duration-200">
             🏠 New Interview
           </button>
         </div>
 
-        {/* ── Past Sessions ── */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-white/80 border-b border-white/10 pb-2">
-            Past Sessions
-          </h2>
+          <h2 className="text-lg font-semibold text-white/80 border-b border-white/10 pb-2">Past Sessions</h2>
           <HistoryList />
         </div>
 

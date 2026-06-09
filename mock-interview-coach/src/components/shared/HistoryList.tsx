@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
-import { getSessions, clearSessions } from '../../utils/storage'
+import { getSessions } from '../../utils/storage'
+import { deleteAllSessions } from '../../services/firestore.service'
+import { useAuthContext } from '../../context/AuthContext'
 import type { Session } from '../../types/interview.types'
 
 function getGradeColor(grade: string): string {
@@ -28,23 +30,79 @@ function formatDate(iso: string): string {
 }
 
 export function HistoryList() {
+  const { currentUser } = useAuthContext()
   const [sessions, setSessions] = useState<Session[]>([])
+  const [loading, setLoading] = useState(true)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   useEffect(() => {
-    setSessions(getSessions())
-  }, [])
+    async function load() {
+      setLoading(true)
+      try {
+        if (currentUser) {
+          // Firestore — logged in
+          const { getSessions: getFirestoreSessions } = await import('../../services/firestore.service')
+          const data = await getFirestoreSessions(currentUser.uid)
+          setSessions(data)
+        } else {
+          // localStorage fallback — guest
+          setSessions(getSessions())
+        }
+      } catch (err) {
+        console.error('Failed to load sessions:', err)
+        setSessions(getSessions()) // fallback
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [currentUser])
 
-  function handleClear() {
+  async function handleClear() {
     if (!confirmClear) {
       setConfirmClear(true)
       return
     }
-    clearSessions()
-    setSessions([])
-    setConfirmClear(false)
+    setClearing(true)
+    try {
+      if (currentUser) {
+        await deleteAllSessions(currentUser.uid)
+      }
+      // Always clear localStorage too
+      const { clearLocalSessions } = (await import('../../utils/storage')) as any
+      clearLocalSessions?.()
+      setSessions([])
+    } catch (err) {
+      console.error('Failed to clear sessions:', err)
+    } finally {
+      setClearing(false)
+      setConfirmClear(false)
+    }
   }
 
+  // ── Loading skeleton ────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-white/10 overflow-hidden animate-pulse">
+        <div className="grid grid-cols-4 px-4 py-2 bg-white/5 border-b border-white/10">
+          {['Date', 'Role', 'Score', 'Grade'].map((h) => (
+            <div key={h} className="h-3 bg-white/10 rounded w-2/3" />
+          ))}
+        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="grid grid-cols-4 px-4 py-3 border-b border-white/5 gap-2">
+            <div className="h-3 bg-white/10 rounded w-3/4" />
+            <div className="h-3 bg-white/10 rounded w-full" />
+            <div className="h-3 bg-white/10 rounded w-1/2 mx-auto" />
+            <div className="h-3 bg-white/10 rounded w-1/3 mx-auto" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // ── Empty state ─────────────────────────────────────────────────
   if (sessions.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center">
@@ -56,9 +114,8 @@ export function HistoryList() {
 
   return (
     <div className="space-y-3">
-      {/* Session rows */}
       <div className="rounded-xl border border-white/10 overflow-hidden">
-        {/* Table header */}
+        {/* Header */}
         <div className="grid grid-cols-4 px-4 py-2 bg-white/5 border-b border-white/10">
           <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Date</span>
           <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Role</span>
@@ -86,19 +143,20 @@ export function HistoryList() {
         ))}
       </div>
 
-      {/* Clear history button */}
+      {/* Clear history */}
       <div className="flex justify-end">
         <button
           onClick={handleClear}
-          className={`text-xs px-3 py-1.5 rounded-lg border transition-all duration-200 ${
+          disabled={clearing}
+          className={`text-xs px-3 py-1.5 rounded-lg border transition-all duration-200 disabled:opacity-50 ${
             confirmClear
               ? 'border-red-500/50 bg-red-500/20 text-red-400 hover:bg-red-500/30'
               : 'border-white/10 bg-white/5 text-white/40 hover:text-white/70 hover:bg-white/10'
           }`}
         >
-          {confirmClear ? '⚠️ Confirm clear history' : 'Clear History'}
+          {clearing ? 'Clearing…' : confirmClear ? '⚠️ Confirm clear history' : 'Clear History'}
         </button>
-        {confirmClear && (
+        {confirmClear && !clearing && (
           <button
             onClick={() => setConfirmClear(false)}
             className="ml-2 text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:bg-white/10 transition-colors duration-200"
