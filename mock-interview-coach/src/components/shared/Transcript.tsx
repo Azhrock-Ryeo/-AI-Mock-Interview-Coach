@@ -1,55 +1,29 @@
-import { useEffect, useRef } from 'react'
-
 interface TranscriptBoxProps {
   transcript: string
-  onChange: (value: string) => void
-  isListening?: boolean
+  isListening: boolean
+  readOnly?: boolean
+  onChange?: (val: string) => void  // kept for compatibility but ignored when readOnly
 }
 
-export default function TranscriptBox({ transcript, onChange, isListening = false }: TranscriptBoxProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.scrollTop = textareaRef.current.scrollHeight
-    }
-  }, [transcript])
-
-  const wordCount = transcript.trim() === '' ? 0 : transcript.trim().split(/\s+/).length
-  const charCount = transcript.length
-
+export default function TranscriptBox({ transcript, isListening, readOnly = false }: TranscriptBoxProps) {
   return (
-    <div className="space-y-2">
-      <div className={`relative rounded-xl border transition-colors duration-200 ${
-        isListening ? 'border-red-500/50 bg-red-500/5' : 'border-gray-200 bg-white'
-      }`}>
-        {isListening && (
-          <div className="absolute top-3 right-3 flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-            </span>
-            <span className="text-xs text-red-400 font-medium">Listening</span>
-          </div>
-        )}
-        <textarea
-          ref={textareaRef}
-          value={transcript}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Your answer will appear here as you speak..."
-          rows={6}
-          className="w-full bg-transparent text-gray-800 text-sm leading-relaxed px-4 py-3 resize-none outline-none placeholder:text-gray-400 pr-28"
-        />
-      </div>
-      <div className="flex items-center justify-between px-1">
-        <p className="text-xs text-gray-400">
-          {isListening ? 'Speak now — or type your answer above' : 'You can edit your answer before submitting'}
-        </p>
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          <span>{wordCount} {wordCount === 1 ? 'word' : 'words'}</span>
-          <span className="text-gray-200">·</span>
-          <span>{charCount} chars</span>
-        </div>
+    <div className="relative w-full">
+      <textarea
+        value={transcript}
+        readOnly={readOnly}
+        onChange={() => {}} // no-op — speech only
+        placeholder={isListening ? 'Listening…' : 'Your answer will appear here as you speak…'}
+        rows={5}
+        className={`w-full resize-none bg-transparent text-sm text-white/80 placeholder-white/20 px-4 py-3 outline-none leading-relaxed ${readOnly ? 'cursor-default select-text' : ''}`}
+        style={{ caretColor: readOnly ? 'transparent' : undefined }}
+      />
+      <div className="flex items-center justify-between px-4 pb-3 text-xs text-white/25 select-none">
+        <span>{readOnly ? '🎤 Speak your answer using the mic above' : 'You can edit your answer before submitting'}</span>
+        <span className="tabular-nums">
+          {transcript.trim() ? `${transcript.trim().split(/\s+/).length} words` : '0 words'}
+          {' · '}
+          {transcript.length} chars
+        </span>
       </div>
     </div>
   )

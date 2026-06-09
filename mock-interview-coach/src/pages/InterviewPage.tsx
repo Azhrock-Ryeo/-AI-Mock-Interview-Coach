@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInterviewContext } from '../app/providers/InterviewProvider'
 
-import QuestionCard from '../components/shared/QuestionCard'
 import ProgressBar from '../components/shared/ProgressBar'
 import TranscriptBox from '../components/shared/Transcript'
 import { FeedbackCardSkeleton } from '../components/ui/Skeleton'
@@ -19,6 +18,18 @@ function ScoreBadge({ score }: { score: number }) {
   if (score >= 8) return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 tabular-nums">{score}/10</span>
   if (score >= 5) return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border border-amber-500/30 bg-amber-500/10 text-amber-400 tabular-nums">{score}/10</span>
   return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border border-red-500/30 bg-red-500/10 text-red-400 tabular-nums">{score}/10</span>
+}
+
+function QuestionCard({ question, category, questionKey }: { question: string; category: Category; questionKey: number }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-[#13131f] p-6 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.9)]">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <span className="text-xs uppercase tracking-widest text-violet-400 font-semibold">{category}</span>
+        <span className="text-xs text-white/30">Question {questionKey + 1}</span>
+      </div>
+      <p className="text-lg font-semibold text-white leading-relaxed">{question}</p>
+    </div>
+  )
 }
 
 function FeedbackCard({ feedback }: { feedback: Feedback }) {
@@ -89,7 +100,7 @@ function InlineTimer({ duration, onExpire, isRunning }: { duration: number; onEx
         <circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" strokeWidth="1.4" />
         <path d="M7.5 4.5V7.5L9.5 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
-      <span style={{ animation: isCritical ? 'pulse 1s ease-in-out infinite' : 'none' }}>{display}</span>
+      <span>{display}</span>
     </div>
   )
 }
@@ -146,7 +157,6 @@ export default function InterviewPage() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [phase, setPhase] = useState<PagePhase>('loading')
-  const [transcript, setTranscript] = useState('')
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [allFeedbacks, setAllFeedbacks] = useState<Feedback[]>([])
   const [allAnswers, setAllAnswers] = useState<string[]>([])
@@ -155,11 +165,19 @@ export default function InterviewPage() {
   const [timerKey, setTimerKey] = useState(0)
   const [showExitDialog, setShowExitDialog] = useState(false)
 
-  const { isListening, isSupported, startListening, stopListening, transcript: liveTranscript, error: speechError } = useSpeechRecognition()
+  // ✅ FIX: Use transcript DIRECTLY from the hook — do NOT append it in a useEffect.
+  // The hook already manages final + interim text internally via finalTranscriptRef.
+  const {
+    isListening,
+    isSupported,
+    startListening,
+    stopListening,
+    transcript,        // ← use this directly as the answer
+    setTranscript,     // ← used to clear on next question
+    error: speechError,
+  } = useSpeechRecognition()
 
-  useEffect(() => {
-    if (liveTranscript) setTranscript(prev => prev + (prev.trim() ? ' ' : '') + liveTranscript)
-  }, [liveTranscript])
+  // ✅ NO liveTranscript useEffect here — that was the word-doubling bug
 
   useEffect(() => { loadQuestions() }, [])
 
@@ -175,7 +193,12 @@ export default function InterviewPage() {
       text,
       category: type === 'behavioral' ? 'Behavioral' : type === 'technical' ? 'Technical' : i % 2 === 0 ? 'Technical' : 'Behavioral',
     }))
-    setQuestions(mapped); setCtxQuestions(result.data); setCurrentIndex(0); setTranscript(''); setFeedback(null); setPhase('answering')
+    setQuestions(mapped)
+    setCtxQuestions(result.data)
+    setCurrentIndex(0)
+    setTranscript('')
+    setFeedback(null)
+    setPhase('answering')
   }
 
   async function handleSubmit() {
@@ -190,15 +213,24 @@ export default function InterviewPage() {
     const newFeedbacks = [...allFeedbacks, newFeedback]
     const newAnswers = [...allAnswers, transcript]
     const newScores = [...allScores, newFeedback.score]
-    setFeedback(newFeedback); setAllFeedbacks(newFeedbacks); setAllAnswers(newAnswers); setAllScores(newScores)
-    setCtxFeedbacks(newFeedbacks); setCtxAnswers(newAnswers); setCtxScores(newScores)
+    setFeedback(newFeedback)
+    setAllFeedbacks(newFeedbacks)
+    setAllAnswers(newAnswers)
+    setAllScores(newScores)
+    setCtxFeedbacks(newFeedbacks)
+    setCtxAnswers(newAnswers)
+    setCtxScores(newScores)
     setPhase('feedback')
   }
 
   function handleNext() {
     const nextIndex = currentIndex + 1
     if (nextIndex >= questions.length) { navigate('/results'); return }
-    setCurrentIndex(nextIndex); setTranscript(''); setFeedback(null); setTimerKey(k => k + 1); setPhase('answering')
+    setCurrentIndex(nextIndex)
+    setTranscript('')   // ← clears via hook's setTranscript
+    setFeedback(null)
+    setTimerKey(k => k + 1)
+    setPhase('answering')
   }
 
   function handleTimerExpire() {
@@ -209,7 +241,9 @@ export default function InterviewPage() {
   }
 
   function handleExitConfirm() {
-    if (isListening) stopListening(); resetInterview(); navigate('/')
+    if (isListening) stopListening()
+    resetInterview()
+    navigate('/')
   }
 
   const currentQuestion = questions[currentIndex]
@@ -217,6 +251,9 @@ export default function InterviewPage() {
   const canSubmit = transcript.trim().length > 0 && phase === 'answering'
   const TIMER_SECONDS = 120
 
+  // ✅ FIX: This page renders its OWN full layout (header + main).
+  // Make sure your router renders InterviewPage WITHOUT a wrapping RootLayout/Navbar.
+  // In router.tsx, the /interview route should NOT be nested inside the layout route.
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#0a0a0f' }}>
       {/* Ambient glow */}
@@ -227,7 +264,7 @@ export default function InterviewPage() {
 
       {showExitDialog && <ExitDialog onConfirm={handleExitConfirm} onCancel={() => setShowExitDialog(false)} />}
 
-      {/* Topbar */}
+      {/* Topbar — this page manages its own header, no Navbar */}
       <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-white/[0.07]"
         style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(16px)' }}>
         <div className="flex items-center gap-2">
@@ -240,7 +277,9 @@ export default function InterviewPage() {
           </div>
         )}
         <div className="flex items-center gap-2">
-          {phase === 'answering' && <InlineTimer key={timerKey} duration={TIMER_SECONDS} onExpire={handleTimerExpire} isRunning />}
+          {phase === 'answering' && (
+            <InlineTimer key={timerKey} duration={TIMER_SECONDS} onExpire={handleTimerExpire} isRunning />
+          )}
           {phase !== 'loading' && (
             <button onClick={() => setShowExitDialog(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs font-semibold hover:bg-red-500/10 transition-colors cursor-pointer">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -278,7 +317,7 @@ export default function InterviewPage() {
               Question {currentIndex + 1} <span className="text-white/15">/ {questions.length}</span>
             </p>
 
-            <QuestionCard {...({ question: currentQuestion.text, category: currentQuestion.category, questionKey: currentIndex } as any)} />
+            <QuestionCard question={currentQuestion.text} category={currentQuestion.category} questionKey={currentIndex} />
 
             {phase === 'evaluating' && (
               <div className="rounded-2xl border border-white/10 bg-[#13131f] p-8 flex flex-col items-center gap-4 text-center">
@@ -297,21 +336,19 @@ export default function InterviewPage() {
                 </div>
 
                 <div className="flex flex-col items-center gap-3 py-2">
-                  <MicButton isListening={isListening} isSupported={isSupported} onToggle={() => { if (isListening) stopListening(); else startListening() }} />
+                  <MicButton
+                    isListening={isListening}
+                    isSupported={isSupported}
+                    onToggle={() => { if (isListening) stopListening(); else startListening() }}
+                  />
                   <p className={`text-xs font-semibold transition-colors duration-200 ${isListening ? 'text-red-400' : 'text-white/25'}`}>
                     {!isSupported ? 'Speech not supported in this browser' : isListening ? '● Listening — click to stop' : 'Click mic to speak your answer'}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-white/15">
-                  <div className="flex-1 h-px bg-white/[0.06]" />
-                  or type below
-                  <div className="flex-1 h-px bg-white/[0.06]" />
-                </div>
-
-                {/* Transcript with forced dark styles */}
+                {/* Speech-only: transcript is read-only, no typing allowed */}
                 <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: '#0d0d18' }}>
-                  <TranscriptBox transcript={transcript} onChange={setTranscript} isListening={isListening} />
+                  <TranscriptBox transcript={transcript} isListening={isListening} readOnly />
                 </div>
 
                 <button
