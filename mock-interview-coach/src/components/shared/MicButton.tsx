@@ -51,8 +51,8 @@ export default function MicButton() {
         {!isSupported ? "Not supported" : isListening ? "Listening..." : "Click to speak"}
       </p>
 
-      {/* Transcript box */}
-      <TranscriptBox transcript={transcript} onChange={setTranscript} />
+      {/* Transcript box — pass isListening so it shows correct placeholder */}
+      <TranscriptBox transcript={transcript} onChange={setTranscript} isListening={isListening} />
 
       {/* Error */}
       {error && <p className="text-xs text-red-400">{error}</p>}
