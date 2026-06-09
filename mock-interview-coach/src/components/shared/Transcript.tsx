@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 interface TranscriptBoxProps {
-  transcript: string        // ← was "value"
+  transcript: string
   onChange: (value: string) => void
   isListening?: boolean
 }
@@ -21,7 +21,7 @@ export default function TranscriptBox({ transcript, onChange, isListening = fals
   return (
     <div className="space-y-2">
       <div className={`relative rounded-xl border transition-colors duration-200 ${
-        isListening ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 bg-white/5'
+        isListening ? 'border-red-500/50 bg-red-500/5' : 'border-gray-200 bg-white'
       }`}>
         {isListening && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5">
@@ -34,20 +34,20 @@ export default function TranscriptBox({ transcript, onChange, isListening = fals
         )}
         <textarea
           ref={textareaRef}
-          value={transcript}           // ← was "value"
+          value={transcript}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Your answer will appear here as you speak..."
           rows={6}
-          className="w-full bg-transparent text-white/85 text-sm leading-relaxed px-4 py-3 resize-none outline-none placeholder:text-white/25 pr-28"
+          className="w-full bg-transparent text-gray-800 text-sm leading-relaxed px-4 py-3 resize-none outline-none placeholder:text-gray-400 pr-28"
         />
       </div>
       <div className="flex items-center justify-between px-1">
-        <p className="text-xs text-white/30">
+        <p className="text-xs text-gray-400">
           {isListening ? 'Speak now — or type your answer above' : 'You can edit your answer before submitting'}
         </p>
-        <div className="flex items-center gap-3 text-xs text-white/30">
+        <div className="flex items-center gap-3 text-xs text-gray-400">
           <span>{wordCount} {wordCount === 1 ? 'word' : 'words'}</span>
-          <span className="text-white/15">·</span>
+          <span className="text-gray-200">·</span>
           <span>{charCount} chars</span>
         </div>
       </div>

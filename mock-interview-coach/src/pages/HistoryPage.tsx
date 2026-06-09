@@ -89,37 +89,30 @@ export default function HistoryPage() {
 
       <div className="relative max-w-3xl mx-auto px-4 py-12 space-y-8">
 
-        {/* Header */}
         <div className="text-center space-y-1">
           <p className="text-sm text-white/40 font-mono uppercase tracking-widest">All Sessions</p>
           <h1 className="text-3xl font-bold text-white">History</h1>
         </div>
 
-        {/* Loading skeleton */}
         {loading && (
           <div className="rounded-xl border border-white/10 overflow-hidden animate-pulse">
             <div className="grid grid-cols-5 px-4 py-2 bg-white/5 border-b border-white/10 gap-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-3 bg-white/10 rounded" />
-              ))}
+              {[...Array(5)].map((_, i) => <div key={i} className="h-3 bg-white/10 rounded" />)}
             </div>
             {[1, 2, 3].map((i) => (
               <div key={i} className="grid grid-cols-5 px-4 py-3 border-b border-white/5 gap-2">
-                {[...Array(5)].map((_, j) => (
-                  <div key={j} className="h-3 bg-white/10 rounded" />
-                ))}
+                {[...Array(5)].map((_, j) => <div key={j} className="h-3 bg-white/10 rounded" />)}
               </div>
             ))}
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && sessions.length === 0 && (
           <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center">
             <p className="text-white/30 text-sm">No sessions yet.</p>
             <p className="text-white/20 text-xs mt-1">Complete an interview to see your history here.</p>
             <button
-              onClick={() => navigate('/interview')}
+              onClick={() => navigate('/')}
               className="mt-4 px-4 py-2 rounded-xl border border-violet-500/40 bg-violet-500/10 text-violet-300 text-sm font-semibold hover:bg-violet-500/20 transition-colors"
             >
               Start Interview
@@ -127,11 +120,9 @@ export default function HistoryPage() {
           </div>
         )}
 
-        {/* Sessions table */}
         {!loading && sessions.length > 0 && (
           <div className="space-y-3">
             <div className="rounded-xl border border-white/10 overflow-hidden">
-              {/* Header */}
               <div className="grid grid-cols-5 px-4 py-2 bg-white/5 border-b border-white/10">
                 <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Date</span>
                 <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Role</span>
@@ -140,7 +131,6 @@ export default function HistoryPage() {
                 <span className="text-xs font-semibold text-white/40 uppercase tracking-wider text-center">Action</span>
               </div>
 
-              {/* Rows */}
               {sessions.map((session) => (
                 <div
                   key={session.id}
@@ -167,11 +157,7 @@ export default function HistoryPage() {
                           : 'border-white/10 bg-white/5 text-white/30 hover:text-red-400 hover:border-red-500/30'
                       }`}
                     >
-                      {deletingId === session.id
-                        ? '…'
-                        : confirmDeleteId === session.id
-                        ? 'Confirm'
-                        : 'Delete'}
+                      {deletingId === session.id ? '…' : confirmDeleteId === session.id ? 'Confirm' : 'Delete'}
                     </button>
                     {confirmDeleteId === session.id && deletingId !== session.id && (
                       <button
@@ -186,7 +172,6 @@ export default function HistoryPage() {
               ))}
             </div>
 
-            {/* Clear all */}
             <div className="flex justify-end gap-2">
               {confirmClearAll && !clearingAll && (
                 <button
@@ -210,7 +195,6 @@ export default function HistoryPage() {
             </div>
           </div>
         )}
-
       </div>
     </div>
   )

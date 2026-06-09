@@ -11,12 +11,10 @@ import { generateQuestions, evaluateAnswer } from '../services/groq.service'
 import type { Feedback } from '../types/interview.types'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 type Category = 'Technical' | 'Behavioral'
 interface Question { text: string; category: Category }
 type PagePhase = 'loading' | 'answering' | 'evaluating' | 'feedback' | 'done'
 
-// ─── Score Badge ──────────────────────────────────────────────────────────────
 function ScoreBadge({ score }: { score: number }) {
   const getColor = () => {
     if (score >= 8) return { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' }
@@ -31,7 +29,6 @@ function ScoreBadge({ score }: { score: number }) {
   )
 }
 
-// ─── FeedbackCard ─────────────────────────────────────────────────────────────
 function FeedbackCard({ feedback }: { feedback: Feedback }) {
   const [expanded, setExpanded] = useState(true)
   return (
@@ -53,7 +50,7 @@ function FeedbackCard({ feedback }: { feedback: Feedback }) {
         .fc-score-fill { height:100%; border-radius:999px; transition:width 0.8s cubic-bezier(0.4,0,0.2,1); }
       `}</style>
       <div className="fc-card">
-        <div className={`fc-header ${expanded ? 'open' : ''}`} onClick={() => setExpanded(v => !v)} role="button" aria-expanded={expanded}>
+        <div className={`fc-header ${expanded ? 'open' : ''}`} onClick={() => setExpanded(v => !v)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontSize: 15, flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 3L6 10.5 3 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -97,7 +94,6 @@ function FeedbackCard({ feedback }: { feedback: Feedback }) {
   )
 }
 
-// ─── InlineTimer ──────────────────────────────────────────────────────────────
 function InlineTimer({ duration, onExpire, isRunning }: { duration: number; onExpire?: () => void; isRunning: boolean }) {
   const [timeLeft, setTimeLeft] = useState(duration)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -137,7 +133,6 @@ function InlineTimer({ duration, onExpire, isRunning }: { duration: number; onEx
   )
 }
 
-// ─── MicButton ────────────────────────────────────────────────────────────────
 function MicButton({ isListening, isSupported, onToggle }: { isListening: boolean; isSupported: boolean; onToggle: () => void }) {
   return (
     <>
@@ -154,7 +149,7 @@ function MicButton({ isListening, isSupported, onToggle }: { isListening: boolea
       `}</style>
       <div style={{ position: 'relative', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {isListening && (<><span className="mic-ring" /><span className="mic-ring" /><span className="mic-ring" /></>)}
-        <button onClick={onToggle} disabled={!isSupported} className={`mic-btn${isListening ? ' listening' : ''}`} aria-label={isListening ? 'Stop recording' : 'Start recording'}>
+        <button onClick={onToggle} disabled={!isSupported} className={`mic-btn${isListening ? ' listening' : ''}`}>
           <svg width="32" height="32" viewBox="0 0 44 44" fill="none">
             <rect x="15" y="4" width="14" height="22" rx="7" fill="white" fillOpacity="0.95" />
             <path d="M8 21C8 28.732 14.268 35 22 35C29.732 35 36 28.732 36 21" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
@@ -167,10 +162,55 @@ function MicButton({ isListening, isSupported, onToggle }: { isListening: boolea
   )
 }
 
+// ─── Exit Confirmation Dialog ─────────────────────────────────────────────────
+function ExitDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease' }}>
+      <style>{`@keyframes fadeIn { from { opacity:0; } to { opacity:1; } } @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }`}</style>
+      <div style={{ background: '#ffffff', borderRadius: 20, padding: '32px', maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', animation: 'slideUp 0.25s ease', fontFamily: "'DM Sans', sans-serif" }}>
+        {/* Icon */}
+        <div style={{ width: 56, height: 56, borderRadius: 16, background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+
+        {/* Text */}
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', textAlign: 'center', margin: '0 0 8px' }}>
+          Exit Interview?
+        </h2>
+        <p style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 1.6, margin: '0 0 28px' }}>
+          Your progress will be lost and this session won't be saved. Are you sure you want to leave?
+        </p>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={onCancel}
+            style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #e5e7eb', background: '#f9fafb', color: '#374151', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s ease' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f3f4f6')}
+            onMouseLeave={e => (e.currentTarget.style.background = '#f9fafb')}
+          >
+            Continue Interview
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#dc2626,#e11d48)', color: '#ffffff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 12px rgba(220,38,38,0.3)', transition: 'all 0.15s ease' }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+          >
+            Exit Interview
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── InterviewPage ─────────────────────────────────────────────────────────────
 export default function InterviewPage() {
   const navigate = useNavigate()
-  const { setQuestions: setCtxQuestions, setAnswers: setCtxAnswers, setFeedbacks: setCtxFeedbacks, setScores: setCtxScores } = useInterviewContext()
+  const { setQuestions: setCtxQuestions, setAnswers: setCtxAnswers, setFeedbacks: setCtxFeedbacks, setScores: setCtxScores, resetInterview } = useInterviewContext()
 
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -182,17 +222,17 @@ export default function InterviewPage() {
   const [allScores, setAllScores] = useState<number[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [timerKey, setTimerKey] = useState(0)
+  const [showExitDialog, setShowExitDialog] = useState(false)
 
   const { isListening, isSupported, startListening, stopListening, transcript: liveTranscript, error: speechError } = useSpeechRecognition()
 
-  // Merge live speech into textarea
   useEffect(() => {
     if (liveTranscript) {
       setTranscript(prev => prev + (prev.trim() ? ' ' : '') + liveTranscript)
     }
   }, [liveTranscript])
 
-  useEffect(() => { loadQuestions() }, []) // eslint-disable-line
+  useEffect(() => { loadQuestions() }, [])
 
   async function loadQuestions() {
     setPhase('loading')
@@ -216,7 +256,6 @@ export default function InterviewPage() {
     }))
 
     setQuestions(mapped)
-    // Also store raw strings in context for ResultsPage
     setCtxQuestions(result.data)
     setCurrentIndex(0)
     setTranscript('')
@@ -248,7 +287,6 @@ export default function InterviewPage() {
     setAllAnswers(newAnswers)
     setAllScores(newScores)
 
-    // Keep context in sync so ResultsPage always has latest data
     setCtxFeedbacks(newFeedbacks)
     setCtxAnswers(newAnswers)
     setCtxScores(newScores)
@@ -269,19 +307,23 @@ export default function InterviewPage() {
     setPhase('answering')
   }
 
-  function handleSkip() {
-    if (isListening) stopListening()
-    const newAnswers = [...allAnswers, '']
-    setAllAnswers(newAnswers)
-    setCtxAnswers(newAnswers)
-    handleNext()
-  }
-
   function handleTimerExpire() {
     if (phase === 'answering') {
       if (transcript.trim()) handleSubmit()
-      else handleSkip()
+      else {
+        // Auto skip on timer expire only — add empty answer
+        const newAnswers = [...allAnswers, '']
+        setAllAnswers(newAnswers)
+        setCtxAnswers(newAnswers)
+        handleNext()
+      }
     }
+  }
+
+  function handleExitConfirm() {
+    if (isListening) stopListening()
+    resetInterview()
+    navigate('/')
   }
 
   const currentQuestion = questions[currentIndex]
@@ -315,6 +357,8 @@ export default function InterviewPage() {
         .ip-btn-primary:disabled { background:#bfdbfe; cursor:not-allowed; box-shadow:none; }
         .ip-btn-ghost { background:transparent; color:#6b7280; border:1.5px solid #e5e7eb; }
         .ip-btn-ghost:hover:not(:disabled) { background:#f9fafb; color:#374151; border-color:#d1d5db; }
+        .ip-btn-danger { background:transparent; color:#dc2626; border:1.5px solid #fecaca; }
+        .ip-btn-danger:hover { background:#fef2f2; border-color:#fca5a5; }
         .ip-btn-success { background:#059669; color:#ffffff; box-shadow:0 2px 8px rgba(5,150,105,0.28); }
         .ip-btn-success:hover { background:#047857; }
         .ip-loading-center { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; gap:20px; }
@@ -327,12 +371,20 @@ export default function InterviewPage() {
         .ip-speech-error { font-size:12px; color:#dc2626; background:#fef2f2; border-radius:8px; padding:6px 12px; }
       `}</style>
 
+      {/* Exit Dialog */}
+      {showExitDialog && (
+        <ExitDialog
+          onConfirm={handleExitConfirm}
+          onCancel={() => setShowExitDialog(false)}
+        />
+      )}
+
       <div className="ip-root">
-        {/* Top bar */}
+        {/* Top bar — custom, no Navbar */}
         <header className="ip-topbar">
           <div className="ip-logo">
             <div className="ip-logo-dot" />
-            MockMate
+            Intervue
           </div>
 
           {phase !== 'loading' && questions.length > 0 && (
@@ -341,27 +393,36 @@ export default function InterviewPage() {
             </div>
           )}
 
-          {phase === 'answering' && (
-            <InlineTimer key={timerKey} duration={TIMER_SECONDS} onExpire={handleTimerExpire} isRunning={phase === 'answering'} />
-          )}
-          {phase !== 'answering' && <div style={{ width: 100 }} />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {phase === 'answering' && (
+              <InlineTimer key={timerKey} duration={TIMER_SECONDS} onExpire={handleTimerExpire} isRunning={phase === 'answering'} />
+            )}
+            {/* Exit button */}
+            {phase !== 'loading' && (
+              <button
+                className="ip-btn ip-btn-danger"
+                onClick={() => setShowExitDialog(true)}
+                style={{ padding: '8px 16px', fontSize: 13 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ marginRight: 4 }}>
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Exit
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Main */}
         <main className="ip-main">
 
-          {/* Loading */}
           {phase === 'loading' && !loadError && (
-            <>
-              <div className="ip-loading-center">
-                <div className="ip-spinner" />
-                <p style={{ fontSize: 14, color: '#6b7280', fontWeight: 500 }}>Preparing your interview questions…</p>
-              </div>
-              <QuestionCardSkeleton />
-            </>
+            <div className="ip-loading-center">
+              <div className="ip-spinner" />
+              <p style={{ fontSize: 14, color: '#6b7280', fontWeight: 500 }}>Preparing your interview questions…</p>
+            </div>
           )}
 
-          {/* Load error */}
           {phase === 'loading' && loadError && (
             <div className="ip-loading-center">
               <div className="ip-error-box" style={{ maxWidth: 480, width: '100%' }}>
@@ -372,7 +433,6 @@ export default function InterviewPage() {
             </div>
           )}
 
-          {/* Interview phases */}
           {(phase === 'answering' || phase === 'evaluating' || phase === 'feedback') && currentQuestion && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -400,7 +460,11 @@ export default function InterviewPage() {
                   </div>
 
                   <div className="ip-mic-row">
-                    <MicButton isListening={isListening} isSupported={isSupported} onToggle={() => { if (isListening) stopListening(); else startListening() }} />
+                    <MicButton
+                      isListening={isListening}
+                      isSupported={isSupported}
+                      onToggle={() => { if (isListening) stopListening(); else startListening() }}
+                    />
                     <p className={`ip-mic-label${isListening ? ' listening' : ''}`}>
                       {!isSupported ? 'Speech not supported in this browser' : isListening ? 'Listening — click to stop' : 'Click mic to speak your answer'}
                     </p>
@@ -410,11 +474,16 @@ export default function InterviewPage() {
 
                   <TranscriptBox transcript={transcript} onChange={setTranscript} isListening={isListening} />
 
+                  {/* Submit only — no skip button */}
                   <div className="ip-actions">
-                    <button className="ip-btn ip-btn-primary" onClick={handleSubmit} disabled={!canSubmit} style={{ flex: 1 }}>
+                    <button
+                      className="ip-btn ip-btn-primary"
+                      onClick={handleSubmit}
+                      disabled={!canSubmit}
+                      style={{ flex: 1 }}
+                    >
                       Submit Answer
                     </button>
-                    <button className="ip-btn ip-btn-ghost" onClick={handleSkip}>Skip</button>
                   </div>
                 </div>
               )}
@@ -423,8 +492,12 @@ export default function InterviewPage() {
                 <>
                   <FeedbackCard feedback={feedback} />
                   <div className="ip-actions">
-                    <button className={`ip-btn ${isLastQuestion ? 'ip-btn-success' : 'ip-btn-primary'}`} onClick={handleNext} style={{ flex: 1 }}>
-                      {isLastQuestion ? 'See Results' : 'Next Question →'}
+                    <button
+                      className={`ip-btn ${isLastQuestion ? 'ip-btn-success' : 'ip-btn-primary'}`}
+                      onClick={handleNext}
+                      style={{ flex: 1 }}
+                    >
+                      {isLastQuestion ? '🎉 See Results' : 'Next Question →'}
                     </button>
                   </div>
                 </>
