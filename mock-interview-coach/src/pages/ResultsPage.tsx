@@ -36,15 +36,23 @@ export default function ResultsPage() {
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [readyToCheck, setReadyToCheck] = useState(false)
 
   const overallScore = calculateAverage(scores)
   const grade = getGrade(overallScore)
 
+  // Give context time to hydrate before checking
   useEffect(() => {
+    const timer = setTimeout(() => setReadyToCheck(true), 100)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!readyToCheck) return
     if (!setup || questions.length === 0) {
       navigate('/')
     }
-  }, [setup, questions, navigate])
+  }, [readyToCheck, setup, questions, navigate])
 
   useEffect(() => {
     if (feedbacks.length === 0) return
@@ -107,6 +115,7 @@ export default function ResultsPage() {
     navigate('/')
   }
 
+  if (!readyToCheck) return null
   if (!setup) return null
 
   return (
