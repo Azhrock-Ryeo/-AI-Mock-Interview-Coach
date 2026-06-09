@@ -5,7 +5,7 @@ import { useInterviewContext } from '../app/providers/InterviewProvider'
 import QuestionCard from '../components/shared/QuestionCard'
 import ProgressBar from '../components/shared/ProgressBar'
 import TranscriptBox from '../components/shared/Transcript'
-import { QuestionCardSkeleton, FeedbackCardSkeleton } from '../components/ui/Skeleton'
+import { FeedbackCardSkeleton } from '../components/ui/Skeleton'
 
 import { generateQuestions, evaluateAnswer } from '../services/groq.service'
 import type { Feedback } from '../types/interview.types'
