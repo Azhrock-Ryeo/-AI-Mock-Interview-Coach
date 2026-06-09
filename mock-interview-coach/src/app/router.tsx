@@ -11,7 +11,6 @@ import SessionDetailPage from '../pages/SessionDetailPage'
 import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
 
-// Layout that includes the Navbar
 function RootLayout() {
   return (
     <>
@@ -22,6 +21,25 @@ function RootLayout() {
 }
 
 export const router = createBrowserRouter([
+  // Routes WITHOUT Navbar
+  {
+    path: '/interview',
+    element: (
+      <ProtectedRoute>
+        <InterviewPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/results',
+    element: (
+      <ProtectedRoute>
+        <ResultsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Routes WITH Navbar
   {
     element: <RootLayout />,
     children: [
@@ -30,22 +48,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <LandingPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/interview',
-        element: (
-          <ProtectedRoute>
-            <InterviewPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/results',
-        element: (
-          <ProtectedRoute>
-            <ResultsPage />
           </ProtectedRoute>
         ),
       },
