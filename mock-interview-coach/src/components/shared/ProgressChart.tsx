@@ -6,7 +6,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Dot,
 } from 'recharts'
 import type { Session } from '../../types/interview.types'
 
