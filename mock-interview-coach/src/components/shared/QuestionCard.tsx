@@ -1,261 +1,360 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useInterviewContext } from '../../app/providers/InterviewProvider'
 
-type Category = "Technical" | "Behavioral";
+import ProgressBar from '../../components/shared/ProgressBar'
+import TranscriptBox from '../../components/shared/Transcript'
+import { FeedbackCardSkeleton } from '../../components/ui/Skeleton'
 
 interface QuestionCardProps {
-  question: string;
-  category: Category;
-  questionKey?: string | number;
+  question: string
+  category: Category
+  questionKey: number
 }
 
-// ─── Sample Questions ────────────────────────────────────────────────────────
-export const sampleQuestions: { question: string; category: Category }[] = [
-  // Technical
-  {
-    category: "Technical",
-    question: "Explain the difference between a stack and a queue. When would you choose one over the other?",
-  },
-  {
-    category: "Technical",
-    question: "How does the JavaScript event loop work, and what is the difference between microtasks and macrotasks?",
-  },
-  {
-    category: "Technical",
-    question: "What is the time complexity of a binary search, and how would you implement it recursively?",
-  },
+function QuestionCard({ question, category, questionKey }: QuestionCardProps) {
+  return (
+    <div key={questionKey} className="rounded-3xl border border-white/10 bg-[#13131f] p-6 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.9)]">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <span className="text-xs uppercase tracking-widest text-violet-400 font-semibold">{category}</span>
+        <span className="text-xs text-white/30">Question {questionKey + 1}</span>
+      </div>
+      <p className="text-lg font-semibold text-white leading-relaxed">{question}</p>
+    </div>
+  )
+}
 
-  {
-    category: "Technical",
-    question: "What is the difference between SQL and NoSQL databases? When would you choose one over the other?",
-  },
-  {
-    category: "Technical",
-    question: "Explain how React's virtual DOM works and why it improves performance over direct DOM manipulation.",
-  },
-  // Behavioral
-  {
-    category: "Behavioral",
-    question: "Tell me about a time you had to deliver a project under a tight deadline. How did you prioritize your work?",
-  },
-  {
-    category: "Behavioral",
-    question: "Describe a situation where you disagreed with a teammate's approach. How did you handle the conflict?",
-  },
-  {
-    category: "Behavioral",
-    question: "Give an example of when you had to learn a new technology quickly to meet a project requirement.",
-  },
+import { generateQuestions, evaluateAnswer } from '../../services/groq.service'
+import type { Feedback } from '../../types/interview.types'
+import { useSpeechRecognition } from '../../hooks/useSpeechRecognition'
 
-  {
-    category: "Behavioral",
-    question: "Tell me about a time you received critical feedback. How did you respond and what did you change?",
-  },
-  {
-    category: "Behavioral",
-    question: "Describe a project you led from start to finish. What was your approach to keeping the team aligned?",
-  },
-];
-// ────────────────────────────────────────────────────────────────────────────
+type Category = 'Technical' | 'Behavioral'
+interface Question { text: string; category: Category }
+type PagePhase = 'loading' | 'answering' | 'evaluating' | 'feedback' | 'done'
 
-const TechnicalIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path d="M3.5 4.5L1.5 6.5L3.5 8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9.5 4.5L11.5 6.5L9.5 8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M7.5 2.5L5.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
+function ScoreBadge({ score }: { score: number }) {
+  if (score >= 8) return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 tabular-nums">{score}/10</span>
+  if (score >= 5) return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border border-amber-500/30 bg-amber-500/10 text-amber-400 tabular-nums">{score}/10</span>
+  return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border border-red-500/30 bg-red-500/10 text-red-400 tabular-nums">{score}/10</span>
+}
 
-const BehavioralIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <circle cx="6.5" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.5"/>
-    <path d="M2 11c0-2.21 2.015-4 4.5-4S11 8.79 11 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
+function FeedbackCard({ feedback }: { feedback: Feedback }) {
+  const [expanded, setExpanded] = useState(true)
+  const scoreColor = feedback.score >= 8 ? 'from-emerald-500 to-emerald-400' : feedback.score >= 5 ? 'from-amber-500 to-amber-400' : 'from-red-500 to-red-400'
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#13131f] overflow-hidden">
+      <div className={`flex items-center justify-between px-5 py-4 cursor-pointer select-none ${expanded ? 'border-b border-white/10' : ''}`} onClick={() => setExpanded(v => !v)}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 3L6 10.5 3 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </div>
+          <span className="text-sm font-semibold text-white/90">Answer Feedback</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <ScoreBadge score={feedback.score} />
+          <svg className="w-5 h-5 text-white/30 transition-transform duration-200" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }} viewBox="0 0 20 20" fill="none">
+            <path d="M5 7.5l5 5 5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </div>
+      {expanded && (
+        <div className="p-5 flex flex-col gap-3">
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2">✓ What went well</p>
+            <p className="text-sm text-white/70 leading-relaxed">{feedback.whatWentWell}</p>
+          </div>
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2">↑ What to improve</p>
+            <p className="text-sm text-white/70 leading-relaxed">{feedback.whatToImprove}</p>
+          </div>
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-violet-400 mb-2">💡 Stronger answer</p>
+            <p className="text-sm text-white/70 leading-relaxed">{feedback.betterAnswer}</p>
+          </div>
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-xs text-white/30 font-semibold w-10">Score</span>
+            <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full bg-gradient-to-r ${scoreColor} transition-all duration-700`} style={{ width: `${(feedback.score / 10) * 100}%` }} />
+            </div>
+            <ScoreBadge score={feedback.score} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
-const categoryConfig: Record<Category, { label: string; color: string; bg: string; dot: string; icon: React.ReactNode }> = {
-  Technical: {
-    label: "Technical",
-    color: "#2563eb",
-    bg: "#eff6ff",
-    dot: "#3b82f6",
-    icon: <TechnicalIcon />,
-  },
-  Behavioral: {
-    label: "Behavioral",
-    color: "#7c3aed",
-    bg: "#f5f3ff",
-    dot: "#8b5cf6",
-    icon: <BehavioralIcon />,
-  },
-};
+function InlineTimer({ duration, onExpire, isRunning }: { duration: number; onExpire?: () => void; isRunning: boolean }) {
+  const [timeLeft, setTimeLeft] = useState(duration)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => { setTimeLeft(duration) }, [duration])
+  useEffect(() => {
+    if (!isRunning) { if (intervalRef.current) clearInterval(intervalRef.current); return }
+    intervalRef.current = setInterval(() => {
+      setTimeLeft(prev => { if (prev <= 1) { clearInterval(intervalRef.current!); onExpire?.(); return 0 } return prev - 1 })
+    }, 1000)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [isRunning, onExpire])
+  const mins = Math.floor(timeLeft / 60)
+  const secs = timeLeft % 60
+  const display = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  const isWarning = timeLeft <= 30 && timeLeft > 10
+  const isCritical = timeLeft <= 10
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-bold tabular-nums transition-all duration-300 ${isCritical ? 'border-red-500/40 bg-red-500/10 text-red-400' : isWarning ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : 'border-white/10 bg-white/5 text-white/60'}`}>
+      <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+        <circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M7.5 4.5V7.5L9.5 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+      <span style={{ animation: isCritical ? 'pulse 1s ease-in-out infinite' : 'none' }}>{display}</span>
+    </div>
+  )
+}
 
-export default function QuestionCard({
-  question,
-  category,
-  questionKey,
-}: QuestionCardProps) {
-  const [visible, setVisible] = useState(false);
+function MicButton({ isListening, isSupported, onToggle }: { isListening: boolean; isSupported: boolean; onToggle: () => void }) {
+  return (
+    <div className="relative flex items-center justify-center w-20 h-20">
+      {isListening && (
+        <>
+          <span className="absolute w-20 h-20 rounded-full bg-red-500/20 animate-ping" />
+          <span className="absolute w-28 h-28 rounded-full bg-red-500/10 animate-ping" style={{ animationDelay: '0.4s' }} />
+        </>
+      )}
+      <button
+        onClick={onToggle}
+        disabled={!isSupported}
+        className={`w-16 h-16 rounded-full flex items-center justify-center relative z-10 transition-all duration-200 border-none cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${isListening ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/30 scale-105' : 'bg-gradient-to-br from-violet-600 to-indigo-600 shadow-lg shadow-violet-500/30 hover:scale-105'}`}
+      >
+        <svg width="28" height="28" viewBox="0 0 44 44" fill="none">
+          <rect x="15" y="4" width="14" height="22" rx="7" fill="white" fillOpacity="0.95" />
+          <path d="M8 21C8 28.732 14.268 35 22 35C29.732 35 36 28.732 36 21" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+          <line x1="22" y1="35" x2="22" y2="41" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="16" y1="41" x2="28" y2="41" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+function ExitDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="bg-[#13131f] border border-white/10 rounded-2xl p-8 max-w-sm w-[90%] shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-5">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <h2 className="text-lg font-bold text-white text-center mb-2">Exit Interview?</h2>
+        <p className="text-sm text-white/40 text-center leading-relaxed mb-7">Your progress will be lost and this session won't be saved.</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-white/10 bg-white/5 text-white/70 text-sm font-semibold hover:bg-white/10 transition-colors cursor-pointer">Keep Going</button>
+          <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-500/80 hover:bg-red-500 text-white text-sm font-semibold transition-colors cursor-pointer">Exit</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function InterviewPage() {
+  const navigate = useNavigate()
+  const { setQuestions: setCtxQuestions, setAnswers: setCtxAnswers, setFeedbacks: setCtxFeedbacks, setScores: setCtxScores, resetInterview } = useInterviewContext()
+
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [phase, setPhase] = useState<PagePhase>('loading')
+  const [transcript, setTranscript] = useState('')
+  const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [allFeedbacks, setAllFeedbacks] = useState<Feedback[]>([])
+  const [allAnswers, setAllAnswers] = useState<string[]>([])
+  const [allScores, setAllScores] = useState<number[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [timerKey, setTimerKey] = useState(0)
+  const [showExitDialog, setShowExitDialog] = useState(false)
+
+  const { isListening, isSupported, startListening, stopListening, transcript: liveTranscript, error: speechError } = useSpeechRecognition()
 
   useEffect(() => {
-    setVisible(false);
-    const t = setTimeout(() => setVisible(true), 30);
-    return () => clearTimeout(t);
-  }, [question, questionKey]);
+    if (liveTranscript) setTranscript(prev => prev + (prev.trim() ? ' ' : '') + liveTranscript)
+  }, [liveTranscript])
 
-  const cfg = categoryConfig[category];
+  useEffect(() => { loadQuestions() }, [])
 
-  return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600&display=swap');
+  async function loadQuestions() {
+    setPhase('loading'); setLoadError(null)
+    const role = sessionStorage.getItem('interview_role') || 'Software Engineer'
+    const difficulty = sessionStorage.getItem('interview_difficulty') || 'medium'
+    const type = sessionStorage.getItem('interview_type') || 'mixed'
+    const count = parseInt(sessionStorage.getItem('interview_count') || '5', 10)
+    const result = await generateQuestions(role, difficulty, type, count)
+    if (result.error || !result.data) { setLoadError(result.error ?? 'Failed to load questions.'); return }
+    const mapped: Question[] = result.data.map((text, i) => ({
+      text,
+      category: type === 'behavioral' ? 'Behavioral' : type === 'technical' ? 'Technical' : i % 2 === 0 ? 'Technical' : 'Behavioral',
+    }))
+    setQuestions(mapped); setCtxQuestions(result.data); setCurrentIndex(0); setTranscript(''); setFeedback(null); setPhase('answering')
+  }
 
-        .qc-card {
-          font-family: 'DM Sans', sans-serif;
-          background: #ffffff;
-          border: 1.5px solid #e5e7eb;
-          border-radius: 20px;
-          padding: 36px 40px;
-          max-width: 680px;
-          width: 100%;
-          box-shadow:
-            0 1px 3px rgba(0,0,0,0.04),
-            0 8px 32px rgba(0,0,0,0.06);
-          position: relative;
-          overflow: hidden;
-          opacity: 0;
-          transform: translateY(14px);
-          transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-                      transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-        }
+  async function handleSubmit() {
+    if (!transcript.trim()) return
+    if (isListening) stopListening()
+    setPhase('evaluating')
+    const role = sessionStorage.getItem('interview_role') || 'Software Engineer'
+    const current = questions[currentIndex]
+    const result = await evaluateAnswer(current.text, transcript, role)
+    if (result.error || !result.data) { setPhase('answering'); return }
+    const newFeedback = result.data
+    const newFeedbacks = [...allFeedbacks, newFeedback]
+    const newAnswers = [...allAnswers, transcript]
+    const newScores = [...allScores, newFeedback.score]
+    setFeedback(newFeedback); setAllFeedbacks(newFeedbacks); setAllAnswers(newAnswers); setAllScores(newScores)
+    setCtxFeedbacks(newFeedbacks); setCtxAnswers(newAnswers); setCtxScores(newScores)
+    setPhase('feedback')
+  }
 
-        .qc-card.qc-visible {
-          opacity: 1;
-          transform: translateY(0);
-        }
+  function handleNext() {
+    const nextIndex = currentIndex + 1
+    if (nextIndex >= questions.length) { navigate('/results'); return }
+    setCurrentIndex(nextIndex); setTranscript(''); setFeedback(null); setTimerKey(k => k + 1); setPhase('answering')
+  }
 
-        .qc-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 3px;
-          background: linear-gradient(90deg, var(--accent-start), var(--accent-end));
-          border-radius: 20px 20px 0 0;
-        }
+  function handleTimerExpire() {
+    if (phase === 'answering') {
+      if (transcript.trim()) handleSubmit()
+      else { const newAnswers = [...allAnswers, '']; setAllAnswers(newAnswers); setCtxAnswers(newAnswers); handleNext() }
+    }
+  }
 
-        .qc-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 5px 12px;
-          border-radius: 999px;
-          font-size: 12px;
-          font-weight: 600;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          margin-bottom: 20px;
-        }
+  function handleExitConfirm() {
+    if (isListening) stopListening(); resetInterview(); navigate('/')
+  }
 
-        .qc-question {
-          font-family: 'DM Serif Display', serif;
-          font-size: clamp(1.2rem, 2.5vw, 1.6rem);
-          line-height: 1.5;
-          color: #111827;
-          margin: 0;
-          letter-spacing: -0.01em;
-        }
-
-        .qc-footer {
-          margin-top: 24px;
-          padding-top: 18px;
-          border-top: 1px solid #f3f4f6;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .qc-footer-icon {
-          width: 16px;
-          height: 16px;
-          opacity: 0.35;
-        }
-
-        .qc-footer-text {
-          font-size: 12px;
-          color: #9ca3af;
-          font-weight: 500;
-        }
-      `}</style>
-
-      <div
-        className={`qc-card${visible ? " qc-visible" : ""}`}
-        style={{
-          "--accent-start": cfg.color,
-          "--accent-end": category === "Technical" ? "#06b6d4" : "#ec4899",
-        } as React.CSSProperties}
-        role="article"
-        aria-label={`${category} question`}
-      >
-        {/* Category Badge */}
-        <div
-          className="qc-badge"
-          style={{ background: cfg.bg, color: cfg.color }}
-        >
-          {cfg.icon}
-          {cfg.label}
-        </div>
-
-        {/* Question Text */}
-        <p className="qc-question">{question}</p>
-
-        {/* Footer */}
-        <div className="qc-footer">
-          <svg
-            className="qc-footer-icon"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M8 5v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <span className="qc-footer-text">Take your time to answer thoughtfully</span>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ─── Demo: cycles through all sample questions ───────────────────────────────
-export function QuestionCardDemo() {
-  const [index, setIndex] = useState(0);
-  const current = sampleQuestions[index];
+  const currentQuestion = questions[currentIndex]
+  const isLastQuestion = currentIndex === questions.length - 1
+  const canSubmit = transcript.trim().length > 0 && phase === 'answering'
+  const TIMER_SECONDS = 120
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: 32, background: "#f9fafb", minHeight: "100vh" }}>
-      <QuestionCard
-        question={current.question}
-        category={current.category}
-        questionKey={index}
-      />
-      <div style={{ display: "flex", gap: 12 }}>
-        <button
-          onClick={() => setIndex((i) => (i - 1 + sampleQuestions.length) % sampleQuestions.length)}
-          style={{ padding: "8px 20px", borderRadius: 8, border: "1.5px solid #e5e7eb", background: "#fff", cursor: "pointer", fontFamily: "DM Sans, sans-serif", fontWeight: 600, fontSize: 13 }}
-        >
-          ← Prev
-        </button>
-        <button
-          onClick={() => setIndex((i) => (i + 1) % sampleQuestions.length)}
-          style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontFamily: "DM Sans, sans-serif", fontWeight: 600, fontSize: 13 }}
-        >
-          Next →
-        </button>
+    <div className="min-h-screen flex flex-col" style={{ background: '#0a0a0f' }}>
+      {/* Ambient glow */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full"
+          style={{ background: 'radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, transparent 70%)', filter: 'blur(40px)' }} />
       </div>
-      <p style={{ fontSize: 12, color: "#9ca3af", fontFamily: "DM Sans, sans-serif" }}>
-        {index + 1} / {sampleQuestions.length}
-      </p>
+
+      {showExitDialog && <ExitDialog onConfirm={handleExitConfirm} onCancel={() => setShowExitDialog(false)} />}
+
+      {/* Topbar */}
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-white/[0.07]"
+        style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(16px)' }}>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+          <span className="font-bold text-white text-sm">Inter<span className="text-violet-400">vue</span></span>
+        </div>
+        {phase !== 'loading' && questions.length > 0 && (
+          <div className="flex-1 max-w-xs mx-6">
+            <ProgressBar current={currentIndex + (phase === 'feedback' ? 1 : 0)} total={questions.length} />
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          {phase === 'answering' && <InlineTimer key={timerKey} duration={TIMER_SECONDS} onExpire={handleTimerExpire} isRunning />}
+          {phase !== 'loading' && (
+            <button onClick={() => setShowExitDialog(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs font-semibold hover:bg-red-500/10 transition-colors cursor-pointer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Exit
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Main */}
+      <main className="relative flex-1 w-full max-w-2xl mx-auto px-4 py-8 flex flex-col gap-5">
+
+        {phase === 'loading' && !loadError && (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+            <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-violet-500 animate-spin" />
+            <p className="text-sm text-white/30 font-medium">Preparing your questions…</p>
+          </div>
+        )}
+
+        {phase === 'loading' && loadError && (
+          <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="w-full max-w-md rounded-2xl border border-red-500/20 bg-red-500/5 p-6 flex flex-col gap-3">
+              <p className="text-sm font-semibold text-red-400">Could not load questions</p>
+              <p className="text-sm text-white/40 leading-relaxed">{loadError}</p>
+              <button onClick={loadQuestions} className="self-start px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors cursor-pointer">Try again</button>
+            </div>
+          </div>
+        )}
+
+        {(phase === 'answering' || phase === 'evaluating' || phase === 'feedback') && currentQuestion && (
+          <>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/25">
+              Question {currentIndex + 1} <span className="text-white/15">/ {questions.length}</span>
+            </p>
+
+            <QuestionCard question={currentQuestion.text} category={currentQuestion.category} questionKey={currentIndex} />
+
+            {phase === 'evaluating' && (
+              <div className="rounded-2xl border border-white/10 bg-[#13131f] p-8 flex flex-col items-center gap-4 text-center">
+                <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-violet-500 animate-spin" />
+                <p className="text-sm font-semibold text-white/80">Evaluating your answer…</p>
+                <p className="text-xs text-white/25">AI is reviewing your response and preparing feedback.</p>
+                <FeedbackCardSkeleton />
+              </div>
+            )}
+
+            {phase === 'answering' && (
+              <div className="rounded-2xl border border-white/10 bg-[#13131f] p-6 flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest text-white/25">Your Answer</span>
+                  {speechError && <span className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1">{speechError}</span>}
+                </div>
+
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <MicButton isListening={isListening} isSupported={isSupported} onToggle={() => { if (isListening) stopListening(); else startListening() }} />
+                  <p className={`text-xs font-semibold transition-colors duration-200 ${isListening ? 'text-red-400' : 'text-white/25'}`}>
+                    {!isSupported ? 'Speech not supported in this browser' : isListening ? '● Listening — click to stop' : 'Click mic to speak your answer'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-white/15">
+                  <div className="flex-1 h-px bg-white/[0.06]" />
+                  or type below
+                  <div className="flex-1 h-px bg-white/[0.06]" />
+                </div>
+
+                {/* Transcript with forced dark styles */}
+                <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: '#0d0d18' }}>
+                  <TranscriptBox transcript={transcript} onChange={setTranscript} isListening={isListening} />
+                </div>
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={!canSubmit}
+                  className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-25 disabled:cursor-not-allowed text-white text-sm font-semibold transition-all duration-200 cursor-pointer"
+                >
+                  Submit Answer
+                </button>
+              </div>
+            )}
+
+            {phase === 'feedback' && feedback && (
+              <>
+                <FeedbackCard feedback={feedback} />
+                <button
+                  onClick={handleNext}
+                  className={`w-full py-3 rounded-xl text-white text-sm font-semibold transition-colors cursor-pointer ${isLastQuestion ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-violet-600 hover:bg-violet-500'}`}
+                >
+                  {isLastQuestion ? '🎉 See Results' : 'Next Question →'}
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </main>
     </div>
-  );
+  )
 }
